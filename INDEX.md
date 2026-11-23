@@ -144,28 +144,46 @@ research/                       the strategy, the thesis and the raw market rese
 
 ---
 
-## 6. What is still missing before the repo is pushed
+## 6. Published, and what is left
 
-**Blocking:**
+**Done (2026-11-23):**
+
+- [x] The repo exists: **https://github.com/SYNSEMA/agent-payments** — public, `main`, 5 commits,
+      89 files, **CI verde 7/7**.
+- [x] **Tag `v0.1.0`** and a **GitHub release** with the notes. The recipe's `[source] ref` points
+      at that tag, so the recipe is installable.
+- [x] **Branch protection** on `main`: the 7 CI checks are required, force-push and deletions are
+      off, conversation resolution is on. `enforce_admins` is **off** on purpose: a solo maintainer
+      must be able to push when the CI itself is broken.
+- [x] **Private vulnerability reporting** is on.
+- [x] Description, topics, issues and discussions on; **wiki off** (the repo has its own docs).
+- [x] `reuse lint` verified locally: 86/86, REUSE 3.3.
+- [x] The recipe is **not** filed in `SYNSEMA/recipes` — decided, see §4.10.
+- [x] The OpenSSF Scorecard badge is in the README; it starts scoring once the repo has a few
+      commits of history.
+
+**Two bugs the first CI run caught, both fixed:**
+
+1. The schema job had its glob **quoted**, so `check-jsonschema` received a literal filename.
+2. The DCO job passed **in vain**: on a first push it built the range as `<root>^..HEAD`, the
+   `git rev-list` error was swallowed by the command substitution, and the job went green having
+   checked nothing. It now uses `github.event.before`, falls back to every commit, and fails loudly
+   on an empty range.
+
+**Still to do:**
 
 - [ ] The `syn` CLI on this machine is **broken**: `syn whoami` fails with
       *"Capability not granted: file_read(".synsema/syn.json")"*. The installed `syn.syn` is from
       5-oct and lacks the `require file.read(".synsema/syn.json")`. **`syn update`** should fix it
       (the CLI fetches itself from the site). Until then `syn deploy` will not work.
-- [ ] `syn setup` — sign in and pick the organisation. `~/.synsema/syn.json` exists (381 bytes,
-      26-sep), so the machine is signed in; the local CLI just cannot read it.
-- [ ] Create the repo `SYNSEMA/agent-payments` (public) and push. **The org `SYNSEMA` exists**
-      (created 23-jul-2026) and the path is **404 → free**. `kitecosmic` is **admin** of the org
-      and `members_can_create_repositories` is true, so `gh repo create` works.
-- [ ] Tag `v0.1.0` — the recipe's `[source] ref` points at a tag, not a branch.
+- [ ] `syn setup` — pick the organisation on the platform.
 - [ ] **Publish the package index** so the format is consumable without the platform: a
       `synsema.json` with `id`, `version`, `main` and `files[]` (sha256 each), served under a
-      stable URL (GitHub Pages of the organisation, not `raw.githubusercontent`, which can be
-      claimed by a fork). The generator is the `make_index.syn` pattern from the Synsema docs.
-      That is what makes `use "agent-payments"` work for anyone.
-- [ ] ~~Add the recipe to `SYNSEMA/recipes`~~ — **decided: no.** See §4.10.
-- [ ] Branch protection on `main`, private vulnerability reporting on, and the Scorecard badge
-      (already in the README) lights up.
+      stable URL — GitHub Pages of the organisation, **not** `raw.githubusercontent`, which a fork can
+      claim. The generator is the `make_index.syn` pattern from the Synsema docs. That is what
+      makes `use "agent-payments"` work for anyone.
+- [ ] **Confirm the framing against AEP** (§5, open item 5) before inviting anyone to implement it.
+- [ ] Decide the public name of the trust service.
 
 **Not blocking, but before v0.2.0:**
 
