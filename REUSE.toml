@@ -1,0 +1,18 @@
+version = 1
+SPDX-PackageName = "agent-payments"
+SPDX-PackageSupplier = "Csibeings LLC <kitecosmic@gmail.com>"
+SPDX-PackageDownloadLocation = "https://github.com/SYNSEMA/agent-payments"
+
+# Everything in this repository is Apache-2.0, except the licence texts
+# themselves, which are the SPDX licence-list texts (CC0-1.0).
+[[annotations]]
+path = ["**"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Csibeings LLC"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = ["LICENSES/**"]
+precedence = "override"
+SPDX-FileCopyrightText = "2026 The Apache Software Foundation and the SPDX license list contributors"
+SPDX-License-Identifier = "CC0-1.0"

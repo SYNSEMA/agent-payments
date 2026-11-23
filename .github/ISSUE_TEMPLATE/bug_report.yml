@@ -1,0 +1,79 @@
+name: Bug report
+description: Something in a verifier, the conformance checker or the console does not behave as the spec says.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks. This form is for **defects**, not for security reports — those go through
+        private vulnerability reporting (see `SECURITY.md`).
+
+  - type: input
+    id: engine
+    attributes:
+      label: Engine version
+      description: "The output of `synsema --version`."
+      placeholder: v0.6.66
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Which component
+      options:
+        - reference/ts verifier
+        - reference/rust verifier
+        - src/verify.syn (offline verifier)
+        - src/conformance.syn (the conformance check)
+        - src/proof.syn (signing / approval / bindings)
+        - web.syn (the console)
+        - the specification (spec/SPEC.md)
+        - something else
+    validations:
+      required: true
+
+  - type: textarea
+    id: bundle
+    attributes:
+      label: The bundle
+      description: >
+        If the problem shows up on a bundle, paste it here. A bundle is self-contained and
+        carries everything a verifier needs — but check it for anything private first.
+      render: json
+    validations:
+      required: false
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: What the spec says should happen, and where.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+      description: The output you got, verbatim.
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+    validations:
+      required: false

@@ -1,0 +1,810 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Forter Intelligence API",
+    "version": "2.0.0",
+    "description": "Read-only, aggregated insights from the Forter network: AI agent and AI referral traffic, AI agent commerce, fraud and abuse, and payments. No authentication required. Responses are cached for 5 minutes.",
+    "contact": {
+      "name": "Forter",
+      "url": "https://www.forter.com/contact-us/"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://intelligence.forter.com/api/v2"
+    }
+  ],
+  "security": [],
+  "paths": {
+    "/fraud-abuse": {
+      "get": {
+        "operationId": "getFraudAbuse",
+        "summary": "Fraud and abuse insights",
+        "description": "Fraud pressure, attack methods, attack flows between countries, device and connection types, and newly detected fraud rings across the Forter network.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/timeRange"
+          },
+          {
+            "$ref": "#/components/parameters/vertical"
+          },
+          {
+            "$ref": "#/components/parameters/continent"
+          }
+        ],
+        "x-payment-info": {
+          "intent": "session",
+          "method": "card",
+          "amount": "0",
+          "currency": "USD"
+        },
+        "responses": {
+          "200": {
+            "description": "Fraud and abuse insights",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FraudAbuseResponse"
+                }
+              }
+            }
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          },
+          "500": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
+    "/payments": {
+      "get": {
+        "operationId": "getPayments",
+        "summary": "Payment analytics",
+        "description": "PSD2 exemption rates, 3DS authentication experience and success rates, and payment method distribution.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/timeRange"
+          },
+          {
+            "$ref": "#/components/parameters/vertical"
+          },
+          {
+            "$ref": "#/components/parameters/continent"
+          }
+        ],
+        "x-payment-info": {
+          "intent": "session",
+          "method": "card",
+          "amount": "0",
+          "currency": "USD"
+        },
+        "responses": {
+          "200": {
+            "description": "Payment analytics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentsResponse"
+                }
+              }
+            }
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          },
+          "500": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
+    "/ai-commerce": {
+      "get": {
+        "operationId": "getAiCommerce",
+        "summary": "AI commerce traffic",
+        "description": "AI agent vs human traffic, conversion rates, and purchase journey metrics.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/timeRange"
+          },
+          {
+            "$ref": "#/components/parameters/vertical"
+          },
+          {
+            "$ref": "#/components/parameters/continent"
+          }
+        ],
+        "x-payment-info": {
+          "intent": "session",
+          "method": "card",
+          "amount": "0",
+          "currency": "USD"
+        },
+        "responses": {
+          "200": {
+            "description": "AI commerce traffic",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiCommerceResponse"
+                }
+              }
+            }
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          },
+          "500": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
+    "/ai-agents": {
+      "get": {
+        "operationId": "getAiAgents",
+        "summary": "AI agent traffic",
+        "description": "Traffic from AI agents (Operator, Perplexity, Manus, ...) by source, conversion and popularity.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/timeRange"
+          },
+          {
+            "$ref": "#/components/parameters/vertical"
+          },
+          {
+            "$ref": "#/components/parameters/continent"
+          }
+        ],
+        "x-payment-info": {
+          "intent": "session",
+          "method": "card",
+          "amount": "0",
+          "currency": "USD"
+        },
+        "responses": {
+          "200": {
+            "description": "AI agent traffic",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiAgentsResponse"
+                }
+              }
+            }
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          },
+          "500": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
+    "/ai-referrals": {
+      "get": {
+        "operationId": "getAiReferrals",
+        "summary": "AI referral traffic",
+        "description": "Traffic referred by AI assistants (ChatGPT, Perplexity, Gemini, ...) by source and country.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/timeRange"
+          },
+          {
+            "$ref": "#/components/parameters/vertical"
+          },
+          {
+            "$ref": "#/components/parameters/continent"
+          }
+        ],
+        "x-payment-info": {
+          "intent": "session",
+          "method": "card",
+          "amount": "0",
+          "currency": "USD"
+        },
+        "responses": {
+          "200": {
+            "description": "AI referral traffic",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiReferralsResponse"
+                }
+              }
+            }
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          },
+          "500": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
+    "/ai-agent-commerce": {
+      "get": {
+        "operationId": "getAiAgentCommerce",
+        "summary": "AI agent commerce report",
+        "description": "Which AI agents place orders, how they check out (scraping vs commerce protocols), what they spend, and where they shop. Defaults to the last 90 days.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/timeRange"
+          },
+          {
+            "$ref": "#/components/parameters/vertical"
+          },
+          {
+            "$ref": "#/components/parameters/continent"
+          },
+          {
+            "name": "agents",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated agent codes to include. Omit for all agents.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-payment-info": {
+          "intent": "session",
+          "method": "card",
+          "amount": "0",
+          "currency": "USD"
+        },
+        "responses": {
+          "200": {
+            "description": "AI agent commerce report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiAgentCommerceResponse"
+                }
+              }
+            }
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          },
+          "500": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "timeRange": {
+        "name": "timeRange",
+        "in": "query",
+        "required": false,
+        "description": "Reporting window. Defaults to 7_day (90_day for /ai-agent-commerce).",
+        "schema": {
+          "$ref": "#/components/schemas/TimeRange"
+        }
+      },
+      "vertical": {
+        "name": "vertical",
+        "in": "query",
+        "required": false,
+        "description": "Merchant vertical. Omit for all industries.",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "physical",
+            "digital",
+            "travel",
+            "food_delivery"
+          ]
+        }
+      },
+      "continent": {
+        "name": "continent",
+        "in": "query",
+        "required": false,
+        "description": "Region. Omit for global.",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "na",
+            "sa",
+            "eu",
+            "as",
+            "af",
+            "oc"
+          ]
+        }
+      }
+    },
+    "responses": {
+      "MethodNotAllowed": {
+        "description": "Only GET is supported.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Unavailable": {
+        "description": "Data temporarily unavailable; retry later.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Human-readable error message."
+          },
+          "timestamp": {
+            "type": "integer",
+            "description": "Unix time in milliseconds."
+          }
+        }
+      },
+      "TimeRange": {
+        "type": "string",
+        "enum": [
+          "7_day",
+          "14_day",
+          "30_day",
+          "90_day"
+        ]
+      },
+      "KpiCard": {
+        "type": "object",
+        "required": [
+          "icon",
+          "value",
+          "label"
+        ],
+        "properties": {
+          "icon": {
+            "type": "string"
+          },
+          "iconColor": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "comparisonDelta": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "KpiSet": {
+        "type": "object",
+        "required": [
+          "current"
+        ],
+        "properties": {
+          "current": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KpiCard"
+            }
+          },
+          "previous": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KpiCard"
+            }
+          }
+        }
+      },
+      "Insight": {
+        "type": "object",
+        "required": [
+          "widgetId",
+          "text"
+        ],
+        "properties": {
+          "widgetId": {
+            "type": "string"
+          },
+          "headline": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "text": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "comparisonText": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "Widget": {
+        "type": "object",
+        "required": [
+          "insight",
+          "chartData"
+        ],
+        "properties": {
+          "insight": {
+            "$ref": "#/components/schemas/Insight"
+          },
+          "chartData": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Chart series for the widget."
+          }
+        }
+      },
+      "FraudAbuseResponse": {
+        "type": "object",
+        "description": "Fraud and abuse dashboard data.",
+        "required": [
+          "timeRange",
+          "kpis",
+          "widgets"
+        ],
+        "properties": {
+          "timeRange": {
+            "$ref": "#/components/schemas/TimeRange"
+          },
+          "kpis": {
+            "$ref": "#/components/schemas/KpiSet"
+          },
+          "widgets": {
+            "type": "object",
+            "required": [
+              "fraudRings",
+              "flowOfAttacks",
+              "connectionType",
+              "deviceType",
+              "attackMethod",
+              "fraudPressure"
+            ],
+            "properties": {
+              "fraudRings": {
+                "$ref": "#/components/schemas/Widget"
+              },
+              "flowOfAttacks": {
+                "$ref": "#/components/schemas/Widget"
+              },
+              "connectionType": {
+                "$ref": "#/components/schemas/Widget"
+              },
+              "deviceType": {
+                "$ref": "#/components/schemas/Widget"
+              },
+              "attackMethod": {
+                "$ref": "#/components/schemas/Widget"
+              },
+              "fraudPressure": {
+                "$ref": "#/components/schemas/Widget"
+              }
+            }
+          }
+        }
+      },
+      "PaymentsResponse": {
+        "type": "object",
+        "description": "Payments dashboard data.",
+        "required": [
+          "timeRange",
+          "kpis",
+          "widgets"
+        ],
+        "properties": {
+          "timeRange": {
+            "$ref": "#/components/schemas/TimeRange"
+          },
+          "kpis": {
+            "$ref": "#/components/schemas/KpiSet"
+          },
+          "widgets": {
+            "type": "object",
+            "required": [
+              "paymentMethodDistribution",
+              "psd2Exemption",
+              "authExperience",
+              "platformSuccess",
+              "paymentMethod"
+            ],
+            "properties": {
+              "paymentMethodDistribution": {
+                "$ref": "#/components/schemas/Widget"
+              },
+              "psd2Exemption": {
+                "$ref": "#/components/schemas/Widget"
+              },
+              "authExperience": {
+                "$ref": "#/components/schemas/Widget"
+              },
+              "platformSuccess": {
+                "$ref": "#/components/schemas/Widget"
+              },
+              "paymentMethod": {
+                "$ref": "#/components/schemas/Widget"
+              }
+            }
+          }
+        }
+      },
+      "AiCommerceResponse": {
+        "type": "object",
+        "description": "AI commerce dashboard data.",
+        "required": [
+          "timeRange",
+          "kpis",
+          "widgets"
+        ],
+        "properties": {
+          "timeRange": {
+            "$ref": "#/components/schemas/TimeRange"
+          },
+          "kpis": {
+            "$ref": "#/components/schemas/KpiSet"
+          },
+          "widgets": {
+            "type": "object",
+            "required": [
+              "trafficByIdentity",
+              "conversionRates",
+              "purchaseJourney"
+            ],
+            "properties": {
+              "trafficByIdentity": {
+                "$ref": "#/components/schemas/Widget"
+              },
+              "conversionRates": {
+                "$ref": "#/components/schemas/Widget"
+              },
+              "purchaseJourney": {
+                "$ref": "#/components/schemas/Widget"
+              }
+            }
+          }
+        }
+      },
+      "AiAgentsResponse": {
+        "type": "object",
+        "description": "AI agents dashboard data.",
+        "required": [
+          "timeRange",
+          "kpis",
+          "widgets"
+        ],
+        "properties": {
+          "timeRange": {
+            "$ref": "#/components/schemas/TimeRange"
+          },
+          "kpis": {
+            "$ref": "#/components/schemas/KpiSet"
+          },
+          "widgets": {
+            "type": "object",
+            "required": [
+              "fingerprintMatching",
+              "trafficBySource",
+              "conversionMetrics",
+              "trafficDistribution",
+              "popularityRanking"
+            ],
+            "properties": {
+              "fingerprintMatching": {
+                "$ref": "#/components/schemas/Widget"
+              },
+              "trafficBySource": {
+                "$ref": "#/components/schemas/Widget"
+              },
+              "conversionMetrics": {
+                "$ref": "#/components/schemas/Widget"
+              },
+              "trafficDistribution": {
+                "$ref": "#/components/schemas/Widget"
+              },
+              "popularityRanking": {
+                "$ref": "#/components/schemas/Widget"
+              }
+            }
+          }
+        }
+      },
+      "AiReferralsResponse": {
+        "type": "object",
+        "description": "AI referrals dashboard data.",
+        "required": [
+          "timeRange",
+          "kpis",
+          "widgets"
+        ],
+        "properties": {
+          "timeRange": {
+            "$ref": "#/components/schemas/TimeRange"
+          },
+          "kpis": {
+            "$ref": "#/components/schemas/KpiSet"
+          },
+          "widgets": {
+            "type": "object",
+            "required": [
+              "conversionRates",
+              "referralDistribution",
+              "sourceTraffic",
+              "sourceRanking",
+              "referralCountry"
+            ],
+            "properties": {
+              "conversionRates": {
+                "$ref": "#/components/schemas/Widget"
+              },
+              "referralDistribution": {
+                "$ref": "#/components/schemas/Widget"
+              },
+              "sourceTraffic": {
+                "$ref": "#/components/schemas/Widget"
+              },
+              "sourceRanking": {
+                "$ref": "#/components/schemas/Widget"
+              },
+              "referralCountry": {
+                "$ref": "#/components/schemas/Widget"
+              }
+            }
+          }
+        }
+      },
+      "AiAgentCommerceResponse": {
+        "type": "object",
+        "description": "AI agent commerce report data.",
+        "required": [
+          "timeRange",
+          "window",
+          "headlines",
+          "headlineStats",
+          "kpis",
+          "widgets"
+        ],
+        "properties": {
+          "timeRange": {
+            "$ref": "#/components/schemas/TimeRange"
+          },
+          "window": {
+            "type": "object",
+            "description": "Days covered, from start up to but not including endExclusive. Every range, filter and agent selection ends on the same day.",
+            "required": [
+              "start",
+              "endExclusive"
+            ],
+            "properties": {
+              "start": {
+                "type": "string",
+                "format": "date"
+              },
+              "endExclusive": {
+                "type": "string",
+                "format": "date"
+              },
+              "heldBack": {
+                "type": "object",
+                "description": "Present only when days are held back: agents that placed orders in the 4 weeks before the latest 7 days placed none in them (usually lost detection), so every range ends on the last day whose 7 days include their orders, at most 14 days back, instead of leaving them out.",
+                "required": [
+                  "latestDay",
+                  "missing"
+                ],
+                "properties": {
+                  "latestDay": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "The latest day in the data."
+                  },
+                  "missing": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Agent codes with no orders in the latest 7 days."
+                  }
+                }
+              }
+            }
+          },
+          "headlines": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Report headlines; empty unless unfiltered and 90_day."
+          },
+          "headlineStats": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "kpis": {
+            "type": "object",
+            "required": [
+              "current",
+              "trends"
+            ],
+            "properties": {
+              "current": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/KpiCard"
+                }
+              },
+              "trends": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "widgets": {
+            "type": "object",
+            "required": [
+              "museVsProtocols",
+              "growth",
+              "checkoutType",
+              "agentMix",
+              "orderValue",
+              "whereAgentsShop"
+            ],
+            "properties": {
+              "museVsProtocols": {
+                "$ref": "#/components/schemas/Widget"
+              },
+              "growth": {
+                "$ref": "#/components/schemas/Widget"
+              },
+              "checkoutType": {
+                "$ref": "#/components/schemas/Widget"
+              },
+              "agentMix": {
+                "$ref": "#/components/schemas/Widget"
+              },
+              "orderValue": {
+                "$ref": "#/components/schemas/Widget"
+              },
+              "whereAgentsShop": {
+                "$ref": "#/components/schemas/Widget"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

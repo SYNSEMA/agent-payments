@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/SYNSEMA/agent-payments/security/advisories/new
+    about: "Report a vulnerability privately. Never in a public issue."
+  - name: Specification change (PSCP)
+    url: https://github.com/SYNSEMA/agent-payments/blob/main/spec/pscp/0000-template.md
+    about: "A change to the normative spec is a Portable Spec Change Proposal: a file and a pull request."
+  - name: The specification
+    url: https://github.com/SYNSEMA/agent-payments/blob/main/spec/SPEC.md
+    about: "Read this before proposing anything about the format."

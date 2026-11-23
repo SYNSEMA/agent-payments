@@ -1,0 +1,38 @@
+{
+  "name": "@agent-payments/verifier",
+  "version": "0.1.0",
+  "description": "Reference verifier for the agent-payments proof bundle. Offline, no network, no account, no dependencies.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "verify.mjs",
+  "exports": {
+    ".": "./verify.mjs"
+  },
+  "bin": {
+    "apv": "./verify.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "verify.mjs"
+  ],
+  "keywords": [
+    "agentic-commerce",
+    "intent",
+    "verifiable-credentials",
+    "webauthn",
+    "dispute-evidence"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SYNSEMA/agent-payments.git",
+    "directory": "reference/ts"
+  },
+  "bugs": {
+    "url": "https://github.com/SYNSEMA/agent-payments/issues"
+  },
+  "homepage": "https://github.com/SYNSEMA/agent-payments#readme",
+  "dependencies": {},
+  "devDependencies": {}
+}

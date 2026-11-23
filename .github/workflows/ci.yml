@@ -1,0 +1,150 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The engine version the reference implementation was verified against.
+  # Bump it deliberately: it is also the minimum in synsema.json.
+  SYNSEMA_VERSION: "0.6.66"
+  NODE_VERSION: "24"
+
+jobs:
+  proof:
+    name: proof (Synsema reference implementation)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install the Synsema engine
+        run: npm install --global synsema@${{ env.SYNSEMA_VERSION }}
+
+      - name: The whole import graph parses
+        run: synsema check web.syn
+
+      - name: Unit tests
+        run: synsema test src/proof.test.syn
+
+      - name: The honest bundle verifies (offline, no network)
+        run: synsema run --cap-set "stdout,file.read" src/verify.syn -- proof-bundle.json
+
+      - name: The tampered bundle is rejected
+        run: |
+          if synsema run --cap-set "stdout,file.read" src/verify.syn -- tampered.json; then
+            echo "::error::the tampered bundle was accepted - this is a release blocker"
+            exit 1
+          fi
+          echo "rejected, as it must be"
+
+      - name: Every vector behaves as the specification requires
+        run: sh scripts/verify-vectors.sh
+
+  vectors:
+    name: reference verifier (TypeScript)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Every valid vector verifies
+        run: node reference/ts/verify.mjs testvectors/valid
+
+      - name: Every invalid vector is rejected
+        run: node reference/ts/verify.mjs testvectors/invalid
+
+      - name: The golden file verifies
+        run: node reference/ts/verify.mjs src/fixture-bundle.json
+
+  reference-rust:
+    name: reference verifier (Rust)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: cargo test
+        run: cargo test --manifest-path reference/rust/Cargo.toml
+
+  schema:
+    name: the vectors match the schema
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Validate every valid vector against spec/bundle.schema.json
+        run: |
+          pip install --quiet check-jsonschema
+          check-jsonschema --schemafile spec/bundle.schema.json "testvectors/valid/*.json" "src/fixture-bundle.json" "proof-bundle.json"
+        # NOTE: the invalid vectors are deliberately malformed — one of them has no
+        # signed_statement at all — so they are NOT validated against the schema.
+        # Their job is to be rejected by the verifiers, not to be well-formed.
+
+  dco:
+    name: DCO sign-off
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Every commit carries a Signed-off-by line
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base="${{ github.event.pull_request.base.sha }}"
+          else
+            base=""
+          fi
+          if [ -z "$base" ]; then
+            base="$(git rev-list --max-parents=0 HEAD | tail -1)"
+            range="$base^..HEAD"
+          else
+            range="$base..HEAD"
+          fi
+          bad=0
+          for sha in $(git rev-list "$range"); do
+            if ! git show -s --format='%B' "$sha" | grep -qE '^Signed-off-by: .+ <[^<>]+@[^<>]+>$'; then
+            echo "::error::commit $sha has no DCO sign-off. Fix it with: git commit --amend -s --no-edit"
+            bad=1
+          fi
+          done
+          exit $bad
+
+  reuse:
+    name: licence compliance (REUSE)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: reuse lint
+        run: |
+          pip install --quiet reuse
+          reuse lint

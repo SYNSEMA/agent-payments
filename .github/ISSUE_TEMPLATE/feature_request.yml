@@ -1,0 +1,52 @@
+name: Feature request
+description: A change to the specification, the conformance check, the verifiers or the console.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A change to **the specification** is a PSCP, not an issue: copy
+        `spec/pscp/0000-template.md` into `spec/pscp/NNNN-your-slug.md` and open a pull
+        request. The governance is in `GOVERNANCE.md` §4.
+
+        This form is for everything else: a new vector, a new verifier, a console feature, a
+        convenience.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of change
+      options:
+        - a new test vector (an attack the verifiers must reject)
+        - a new verifier or a new language binding
+        - the console (web.syn)
+        - the conformance check
+        - documentation
+        - the recipe or the deployment
+        - something else
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What is missing or wrong today. A real case beats a hypothetical.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like to happen
+    validations:
+      required: true
+
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility
+      description: >
+        If this touches the format: does a bundle produced under the current version still
+        verify? Does it need a new `version` string?
+    validations:
+      required: false

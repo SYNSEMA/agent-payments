@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>intent-proof — autorización verificable para compras de agentes</title>
+<style>
+  :root{
+    --bg:#0b0d12; --panel:#12151d; --panel2:#181c26; --line:#242a38;
+    --fg:#e6e9f0; --muted:#8b93a7; --accent:#6ea8fe; --ok:#3ddc97;
+    --bad:#ff6b6b; --warn:#ffc857; --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+       font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif}
+  header{padding:20px 28px;border-bottom:1px solid var(--line);display:flex;
+         align-items:baseline;gap:16px;flex-wrap:wrap}
+  h1{font-size:19px;margin:0;letter-spacing:-.2px}
+  .tag{color:var(--muted);font-size:13px}
+  .tag b{color:var(--accent);font-family:var(--mono);font-weight:500}
+  main{max-width:1180px;margin:0 auto;padding:26px 28px 80px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:900px){.row{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+  .card h2{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);
+           margin:0 0 12px;font-weight:600}
+  .step{display:flex;gap:12px;align-items:flex-start;margin-bottom:12px}
+  .n{flex:0 0 24px;height:24px;border-radius:50%;background:var(--panel2);border:1px solid var(--line);
+     display:grid;place-items:center;font-size:12px;color:var(--muted);font-family:var(--mono)}
+  .n.on{background:var(--accent);color:#08111f;border-color:var(--accent);font-weight:700}
+  .n.ok{background:var(--ok);color:#04220f;border-color:var(--ok);font-weight:700}
+  .n.bad{background:var(--bad);color:#2b0808;border-color:var(--bad);font-weight:700}
+  .body{flex:1;min-width:0}
+  .quote{background:var(--panel2);border-left:2px solid var(--accent);padding:9px 13px;
+         border-radius:0 7px 7px 0;margin:5px 0;font-size:14px}
+  .quote.bad{border-left-color:var(--bad)}
+  .quote.ok{border-left-color:var(--ok)}
+  .meta{color:var(--muted);font-size:13px;margin-top:5px}
+  button{font:inherit;font-size:14px;padding:9px 15px;border-radius:8px;cursor:pointer;
+         border:1px solid var(--line);background:var(--panel2);color:var(--fg);transition:.12s}
+  button:hover:not(:disabled){border-color:var(--accent);color:#fff}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  button.primary{background:var(--accent);color:#08111f;border-color:var(--accent);font-weight:600}
+  button.primary:hover:not(:disabled){filter:brightness(1.1);color:#08111f}
+  .checks{margin-top:10px}
+  .check{display:flex;gap:9px;align-items:flex-start;padding:6px 0;border-bottom:1px solid #1b202b;
+         font-size:13.5px}
+  .check:last-child{border-bottom:0}
+  .mark{flex:0 0 18px;font-family:var(--mono);font-weight:700;font-size:13px}
+  .mark.y{color:var(--ok)} .mark.n{color:var(--bad)}
+  .cname{font-family:var(--mono);font-size:12.5px;color:var(--fg);min-width:150px}
+  .cdetail{color:var(--muted);flex:1}
+  .verdict{display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;
+           font-family:var(--mono);letter-spacing:.05em;font-weight:600}
+  .verdict.ok{background:rgba(61,220,151,.14);color:var(--ok);border:1px solid rgba(61,220,151,.4)}
+  .verdict.bad{background:rgba(255,107,107,.14);color:var(--bad);border:1px solid rgba(255,107,107,.4)}
+  .verdict.warn{background:rgba(255,200,87,.14);color:var(--warn);border:1px solid rgba(255,200,87,.4)}
+  pre{background:#0a0c11;border:1px solid var(--line);border-radius:9px;padding:13px;
+      overflow:auto;font-family:var(--mono);font-size:11.5px;line-height:1.5;color:#c3cad9;
+      max-height:330px;margin:10px 0 0}
+  .row2{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:12px}
+  input[type=text]{font:inherit;font-size:14px;padding:9px 12px;border-radius:8px;flex:1;min-width:220px;
+                   border:1px solid var(--line);background:var(--panel2);color:var(--fg)}
+  input[type=text]:focus{outline:none;border-color:var(--accent)}
+  .steps{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+  .pill{padding:5px 12px;border-radius:20px;font-size:12.5px;background:var(--panel);
+        border:1px solid var(--line);color:var(--muted)}
+  .pill.on{background:rgba(110,168,254,.13);border-color:rgba(110,168,254,.45);color:var(--accent)}
+  .pill.done{color:var(--ok);border-color:rgba(61,220,151,.35)}
+  .hint{color:var(--muted);font-size:12.5px;margin-top:9px;line-height:1.5}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:13px}
+  .kv dt{color:var(--muted);font-family:var(--mono);font-size:12px}
+  .kv dd{margin:0;font-family:var(--mono);font-size:12px;word-break:break-all}
+  .banner{padding:11px 14px;border-radius:9px;font-size:13.5px;margin-bottom:16px;border:1px solid}
+  .banner.err{background:rgba(255,107,107,.09);border-color:rgba(255,107,107,.35);color:#ffb3b3}
+  .banner.info{background:rgba(110,168,254,.08);border-color:rgba(110,168,254,.3);color:#bcd4ff}
+  .hidden{display:none}
+  .section{margin-bottom:18px}
+  h3{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+     margin:0 0 10px;font-weight:600}
+</style>
+</head>
+<body>
+<header>
+  <h1>intent-proof</h1>
+  <span class="tag">autorización verificable para compras de agentes · issuer <b id="issuer">…</b></span>
+</header>
+
+<main>
+  <div id="err" class="banner err hidden"></div>
+
+  <div class="steps">
+    <span class="pill on" id="p1">1 · el usuario pide</span>
+    <span class="pill" id="p2">2 · el agente propone</span>
+    <span class="pill" id="p3">3 · el usuario aprueba</span>
+    <span class="pill" id="p4">4 · se verifica</span>
+  </div>
+
+  <div class="row">
+    <!-- LEFT: the conversation -->
+    <div class="card section">
+      <h2>La conversación</h2>
+
+      <div id="s1" class="step">
+        <div class="n on">1</div>
+        <div class="body">
+          <div class="meta">Usuario</div>
+          <div class="quote" id="userText">book a hotel in NYC for 2 nights under $600 total, free cancellation until the day before arrival</div>
+          <div class="row2">
+            <button id="btnAsk" class="primary">Pedir y dejar que el agente intente</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="s2" class="step hidden">
+        <div class="n" id="n2">2</div>
+        <div class="body">
+          <div class="meta">Agente — primera propuesta</div>
+          <div class="quote bad" id="prop1"></div>
+          <div class="meta" id="v1line"></div>
+          <div class="checks" id="checks1"></div>
+          <div class="row2">
+            <button id="btnRetry">El agente reintenta con otra tarifa</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="s3" class="step hidden">
+        <div class="n" id="n3">3</div>
+        <div class="body">
+          <div class="meta">Agente — segunda propuesta</div>
+          <div class="quote ok" id="prop2"></div>
+          <div class="meta" id="v2line"></div>
+          <div class="checks" id="checks2"></div>
+          <div class="row2">
+            <button id="btnReg">Registrar mi passkey</button>
+            <button id="btnApprove" class="primary" disabled>Aprobar con Face ID / Windows Hello</button>
+          </div>
+          <div class="hint" id="hint">El botón pide una aserción WebAuthn real sobre el hash exacto de la propuesta. El agente no puede firmarla por vos.</div>
+        </div>
+      </div>
+
+      <div id="s4" class="step hidden">
+        <div class="n ok" id="n4">4</div>
+        <div class="body">
+          <div class="meta">Resultado</div>
+          <div class="row2"><span class="verdict" id="finalVerdict">—</span></div>
+          <div class="checks" id="finalChecks"></div>
+          <div class="row2">
+            <button id="btnTamper">Manipular el recibo y volver a verificar</button>
+            <button id="btnDownload">Descargar el proof bundle</button>
+          </div>
+          <div class="hint">La verificación recalcula todo desde los artefactos: la firma, los hashes de intención y propuesta, y el veredicto de conformidad. No confía en lo que dice el servidor.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: the proof -->
+    <div>
+      <div class="card section">
+        <h2>El proof bundle</h2>
+        <div class="kv">
+          <dt>issuer</dt><dd id="kIssuer">—</dd>
+          <dt>intent fp</dt><dd id="kIntent">—</dd>
+          <dt>proposal fp</dt><dd id="kProposal">—</dd>
+          <dt>verdict</dt><dd id="kVerdict">—</dd>
+        </div>
+        <pre id="bundle">— todavía no hay bundle —</pre>
+      </div>
+
+      <div class="card">
+        <h2>Qué está firmando</h2>
+        <pre id="statement">— todavía no hay statement —</pre>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const $ = (id)=>document.getElementById(id);
+const esc = (s)=>String(s??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let BUNDLE=null, CRED=null;
+
+function showErr(m){ const e=$("err"); e.textContent=m; e.classList.remove("hidden"); }
+function clearErr(){ $("err").classList.add("hidden"); }
+async function api(path, body, method){
+  const m = method || (body===undefined ? "GET" : "POST");
+  const opt = m==="GET" ? {} : {method:m,headers:{"content-type":"application/json"},body:JSON.stringify(body||{})};
+  const r = await fetch(path,opt);
+  const t = await r.text();
+  let j; try{ j=JSON.parse(t); }catch(e){ throw new Error(t||r.statusText); }
+  if(!r.ok) throw new Error((j&&(j.error?.message||j.message))||("HTTP "+r.status));
+  return j;
+}
+function pill(n,on,done){ const p=$("p"+n); p.classList.toggle("on",!!on&&!done); p.classList.toggle("done",!!done); }
+
+function renderChecks(el, verdict){
+  el.innerHTML = verdict.checks.map(c=>
+    `<div class="check"><div class="mark ${c.ok?'y':'n'}">${c.ok?'✓':'✗'}</div>
+     <div class="cname">${esc(c.name)}</div><div class="cdetail">${esc(c.detail)}</div></div>`).join("");
+}
+function renderVerdictLine(el, v){
+  const cls = v.verdict==="conformant" ? "ok" : "bad";
+  el.innerHTML = `<span class="verdict ${cls}">${esc(v.verdict)}</span> <span class="meta">${v.passed}/${v.total} restricciones cumplidas</span>`;
+}
+
+// ── step 1 → 2 ──────────────────────────────────────────────────────────────
+$("btnAsk").onclick = async ()=>{
+  clearErr();
+  try{
+    const r = await api("/api/ask",{text:$("userText").textContent});
+    $("s2").classList.remove("hidden");
+    pill(1,false,true); pill(2,true,false);
+    $("n2").className="n bad";
+    $("prop1").textContent = r.proposal.summary;
+    renderVerdictLine($("v1line"), r.verdict);
+    renderChecks($("checks1"), r.verdict);
+  }catch(e){ showErr(e.message); }
+};
+
+// ── step 2 → 3 (agent retries) ─────────────────────────────────────────────
+$("btnRetry").onclick = async ()=>{
+  clearErr();
+  try{
+    const r = await api("/api/retry", {}, "POST");
+    $("s3").classList.remove("hidden");
+    pill(2,false,true); pill(3,true,false);
+    $("n3").className="n on";
+    $("prop2").textContent = r.proposal.summary;
+    renderVerdictLine($("v2line"), r.verdict);
+    renderChecks($("checks2"), r.verdict);
+    const st = await api("/api/state");
+    $("btnApprove").disabled = !st.has_credential;
+    if(!st.has_credential) $("hint").textContent="Primero registrá tu passkey (un toque). Después el botón de aprobación usa WebAuthn real.";
+  }catch(e){ showErr(e.message); }
+};
+
+// ── passkey helpers ────────────────────────────────────────────────────────
+function b64uToBuf(s){ const b=atob(s.replace(/-/g,"+").replace(/_/g,"/")); const u=new Uint8Array(b.length);
+  for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i); return u.buffer; }
+function bufToB64u(buf){ const u=new Uint8Array(buf); let s="";
+  for(const b of u) s+=String.fromCharCode(b); return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,""); }
+
+async function registerPasskey(){
+  clearErr();
+  try{
+    const ch = await api("/api/challenge");
+    const pk = await crypto.subtle.generateKey({name:"ECDSA",namedCurve:"P-256"},true,["sign","verify"]);
+    const cred = await navigator.credentials.create({
+      publicKey:{
+        challenge: b64uToBuf(ch.challenge),
+        rp:{id:ch.rp_id,name:"intent-proof"},
+        user:{id:new TextEncoder().encode("user-1"),name:"user-1",displayName:"Joel"},
+        pubKeyCredParams:[{type:"public-key",alg:-7},{type:"public-key",alg:-257}],
+        authenticatorSelection:{residentKey:"preferred",userVerification:"preferred"},
+        attestation:"none", timeout:60000
+      }});
+    if(!cred) throw new Error("el navegador no devolvió una credencial");
+    const json = {id:cred.id, rawId:bufToB64u(cred.rawId),
+      response:{clientDataJSON:bufToB64u(cred.response.clientDataJSON),
+                attestationObject:bufToB64u(cred.response.attestationObject)},
+      type:cred.type, authenticatorAttachment:cred.authenticatorAttachment};
+    const r = await api("/api/register",{credential:json});
+    CRED = r;
+    $("btnApprove").disabled=false;
+    $("hint").textContent = `Passkey registrado (${r.credential_id}). Ahora "Aprobar" pide una aserción WebAuthn real.`;
+  }catch(e){ showErr("No se pudo registrar el passkey: "+e.message); }
+}
+$("btnReg").onclick = registerPasskey;
+
+// ── step 3 → 4 (approve with the passkey) ──────────────────────────────────
+$("btnApprove").onclick = async ()=>{
+  clearErr();
+  try{
+    const ch = await api("/api/challenge");
+    const st = await api("/api/state");
+    // allowCredentials: the server knows which passkey this user registered,
+    // so the browser does not have to ask WHICH one (no account chooser).
+    const allow = st.credential_id ? [{id: b64uToBuf(st.credential_id), type:"public-key"}] : undefined;
+    const as = await navigator.credentials.get({
+      publicKey:{challenge:b64uToBuf(ch.challenge),
+                 rpId:ch.rp_id,
+                 allowCredentials: allow,
+                 userVerification:"preferred", timeout:60000}});
+    if(!as) throw new Error("el navegador no devolvió una aserción");
+    const json = {id:as.id, rawId:bufToB64u(as.rawId),
+      response:{clientDataJSON:bufToB64u(as.response.clientDataJSON),
+                authenticatorData:bufToB64u(as.response.authenticatorData),
+                signature:bufToB64u(as.response.signature),
+                userHandle:as.response.userHandle?bufToB64u(as.response.userHandle):null},
+      type:as.type};
+    const r = await api("/api/approve",{assertion:json});
+    BUNDLE = r.bundle;
+    $("s4").classList.remove("hidden");
+    pill(3,false,true); pill(4,true,false);
+    $("n4").className="n ok";
+    showVerdict(r.verdict);
+    renderBundle(r.bundle);
+  }catch(e){ showErr("No se pudo aprobar: "+e.message); }
+};
+
+function showVerdict(v){
+  const cls = v.ok?"ok":"bad";
+  $("finalVerdict").className="verdict "+cls;
+  $("finalVerdict").textContent = v.summary;
+  renderChecks($("finalChecks"), v);
+}
+function renderBundle(b){
+  $("bundle").textContent = JSON.stringify(b,null,2);
+  $("statement").textContent = JSON.stringify(b.signed_statement,null,2);
+  $("kIntent").textContent = b.signed_statement.credentialSubject.intent_fingerprint;
+  $("kProposal").textContent = b.signed_statement.credentialSubject.proposal_fingerprint;
+  $("kVerdict").textContent = b.signed_statement.credentialSubject.verdict;
+}
+
+// ── the tamper test ────────────────────────────────────────────────────────
+$("btnTamper").onclick = async ()=>{
+  clearErr();
+  if(!BUNDLE){ showErr("Primero aprobá una compra."); return; }
+  const tampered = JSON.parse(JSON.stringify(BUNDLE));
+  tampered.proposal.amount = 590;            // someone edits the price after signing
+  const v = await api("/api/verify",{bundle:tampered});
+  showVerdict(v);
+  $("hint").textContent = "El bundle fue manipulado: el precio cambió de $540 a $590 DESPUÉS de la firma. La verificación lo rechaza y dice por qué.";
+};
+
+// ── download ───────────────────────────────────────────────────────────────
+$("btnDownload").onclick = ()=>{
+  if(!BUNDLE) return;
+  const blob = new Blob([JSON.stringify(BUNDLE,null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download="proof-bundle.json"; a.click();
+};
+
+// ── boot ───────────────────────────────────────────────────────────────────
+(async ()=>{
+  try{
+    const s = await api("/api/state");
+    $("issuer").textContent = s.issuer;
+    $("kIssuer").textContent = s.issuer;
+    if(s.has_credential){ $("btnApprove").disabled=false; }
+  }catch(e){ showErr(e.message); }
+})();
+</script>
+</body>
+</html>

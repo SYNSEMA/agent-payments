@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+title: agent-payments
+message: >-
+  If you use this software, please cite it using the metadata from this file.
+type: software
+authors:
+  - given-names: Joel
+    family-names: Lucena
+    alias: kitecosmic
+    affiliation: Csibeings LLC
+repository-code: 'https://github.com/SYNSEMA/agent-payments'
+url: 'https://github.com/SYNSEMA/agent-payments'
+abstract: >-
+  A portable, offline-verifiable evidence format for purchases made by AI
+  agents. It binds what a user requested, what the agent proposed, and what a
+  human approved, into a signed bundle that any third party can verify with
+  public keys only - no network, no account, and no trust in the issuer. The
+  reference implementation is written in Synsema; the reference verifiers are
+  written in TypeScript and Rust and depend on nothing but their standard
+  libraries.
+keywords:
+  - agentic-commerce
+  - intent
+  - verifiable-credentials
+  - dispute-evidence
+  - ap2
+  - aep
+  - conformance
+  - webauthn
+license: Apache-2.0
+version: 0.1.0
+date-released: '2026-11-22'

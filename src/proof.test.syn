@@ -1,0 +1,343 @@
+-- intent-proof · tests/proof.test.syn
+-- The proof must reject a tampered bundle and accept an honest one.
+-- Run: synsema test tests/proof.test.syn
+
+use "./intent.syn" as intents
+use "./conformance.syn" as conf
+use "./proof.syn" as proof
+
+require sign("PROOF")
+require file.read("**/fixture-bundle.json")
+
+let SEED be bytes("0303030303030303030303030303030303030303030303030303030303030303", "hex")
+let KEY be as_secret(SEED, "PROOF")
+let DID be did_key_encode(ed25519_pubkey(KEY))
+
+task build_intent()
+    give intents.make_intent(
+        "book a hotel in NYC for 2 nights under $600 total, free cancellation until the day before arrival",
+        [
+            intents.budget_constraint(600, "USD"),
+            intents.category_constraint("hotel"),
+            intents.exact_attribute_constraint("nights", 2, "exactly 2 nights"),
+            intents.refundable_constraint(1)
+        ])
+
+task build_proposal_good()
+    give {
+        "merchant": "The Standard, NYC",
+        "merchant_id": "standard-nyc",
+        "summary": "The Standard NYC — 2 nights, $540, free cancellation until 24h before arrival",
+        "category": "hotel",
+        "amount": 540,
+        "currency": "USD",
+        "nights": 2,
+        "refundable_days": 1
+    }
+
+task build_proposal_bad()
+    give {
+        "merchant": "The Standard, NYC",
+        "merchant_id": "standard-nyc",
+        "summary": "The Standard NYC — 2 nights, $580, NON-REFUNDABLE rate",
+        "category": "hotel",
+        "amount": 580,
+        "currency": "USD",
+        "nights": 2,
+        "refundable_days": 0
+    }
+
+task make_approval()
+    give {
+        "approved_at": 1795217000,
+        "approved_by": "user-1",
+        "credential_id": "cred-abc",
+        "issuer": DID,
+        "rp_id": "localhost",
+        "origin": "http://localhost:8477",
+        "challenge": "AAAAAAAAAAAAAAAAAAAAAA",
+        "credential_public_key": {"kty": "EC", "crv": "P-256", "x": "AA", "y": "AA"},
+        "sign_count": 0
+    }
+
+task build_bundle(proposal)
+    let i be build_intent()
+    let v be conf.check_all(i, proposal)
+    let ap be make_approval()
+    let st be proof.make_statement(i, proposal, v, ap)
+    let signed be proof.sign_statement(st, KEY, DID)
+    give proof.make_bundle(i, proposal, v, signed, {"approval": ap, "issuer": DID, "human_assertion": nothing})
+
+-- ── conformance ────────────────────────────────────────────────────────────
+
+test "the bad proposal is caught: right budget, wrong rate"
+    let v be conf.check_all(build_intent(), build_proposal_bad())
+    assert_eq(v.verdict, "non_conformant")
+    assert_eq(v.total, 4)
+    assert_eq(v.passed, 3)
+    -- exactly one violation: the refund policy
+    assert_eq(length(v.violations), 1)
+    assert_eq(v.violations[0].constraint.field, "refundable_days")
+
+test "the good proposal passes every constraint"
+    let v be conf.check_all(build_intent(), build_proposal_good())
+    assert_eq(v.verdict, "conformant")
+    assert_eq(length(v.violations), 0)
+
+test "the price alone would have passed — this is why approval is not enough"
+    let bad be build_proposal_bad()
+    assert(bad.amount <= 600)              -- inside the budget
+    assert_eq(conf.check_all(build_intent(), bad).verdict, "non_conformant")
+
+-- ── fingerprints ──────────────────────────────────────────────────────────
+
+test "the same intent always fingerprints the same, a different one does not"
+    assert_eq(intents.intent_fingerprint(build_intent()), intents.intent_fingerprint(build_intent()))
+    let other be intents.make_intent("book a flight", [intents.budget_constraint(600, "USD")])
+    assert_ne(intents.intent_fingerprint(build_intent()), intents.intent_fingerprint(other))
+
+test "the fingerprint is a commitment, not a summary: reordering constraints changes it"
+    let i be build_intent()
+    let shuffled be {"version": i.version, "raw": i.raw,
+                     "constraints": reverse(i.constraints)}
+    assert_ne(intents.intent_fingerprint(i), intents.intent_fingerprint(shuffled))
+
+-- ── signing ───────────────────────────────────────────────────────────────
+
+test "the signed statement verifies against the issuer did"
+    let b be build_bundle(build_proposal_good())
+    let v be proof.verify_statement(b.signed_statement, DID)
+    assert_ne(v, nothing)
+    assert_eq(v.verified, true)
+
+test "a statement signed by another key does not verify against our did"
+    let i be build_intent()
+    let p be build_proposal_good()
+    let ver be conf.check_all(i, p)
+    let st be proof.make_statement(i, p, ver, make_approval())
+    let OTHER_SEED be bytes("0404040404040404040404040404040404040404040404040404040404040404", "hex")
+    let other_key be as_secret(OTHER_SEED, "PROOF")
+    let other_did be did_key_encode(ed25519_pubkey(other_key))
+    let signed be proof.sign_statement(st, other_key, other_did)
+    assert_eq(proof.verify_statement(signed, DID), nothing)
+
+-- ── verification ──────────────────────────────────────────────────────────
+
+-- The golden file lives next to the test (src/fixture-bundle.json) but the
+-- suite may be run from the project root or from src/. Try both.
+task real_bundle()
+    let raw be ""
+    try
+        set raw to read_file("./fixture-bundle.json")
+    recover err
+        set raw to read_file("src/fixture-bundle.json")
+    give json_decode(raw, nothing)
+
+test "an honest bundle verifies — the REAL artifact from a real passkey ceremony"
+    -- fixture-bundle.json is a bundle produced by an actual WebAuthn ceremony
+    -- (a virtual authenticator in CI, a real device in the demo). It is the
+    -- golden file: if this stops verifying, the product stopped working.
+    let b be real_bundle()
+    assert_ne(b, nothing)
+    let v be proof.verify_bundle(b, DID)
+    assert_eq(v.ok, true)
+    assert_eq(v.summary, "VERIFIED")
+    assert_eq(length(v.failures), 0)
+    -- all nine checks ran
+    assert_eq(length(v.checks), 9)
+    each n in ["signature","intent_integrity","proposal_integrity","verdict_recomputed",
+               "conformance","approval_signed","human_approval","assertion_binding",
+               "assertion_shape"]
+        assert_eq(length(where(v.checks, (c) => c.name == n)), 1)
+
+test "the real bundle's proposal edit is caught"
+    let b be real_bundle()
+    set b.proposal["amount"] to 590
+    let v be proof.verify_bundle(b, DID)
+    assert_eq(v.ok, false)
+    assert_eq(length(where(v.failures, (f) => f.name == "proposal_integrity")), 1)
+
+test "the real bundle's intent edit is caught"
+    let b be real_bundle()
+    set b.intent["raw"] to "book ANYTHING, no limit"
+    let v be proof.verify_bundle(b, DID)
+    assert_eq(v.ok, false)
+    assert_eq(length(where(v.failures, (f) => f.name == "intent_integrity")), 1)
+
+test "the real bundle's approval edit is caught (it is inside the signature)"
+    let b be real_bundle()
+    set b.signed_statement["credentialSubject"]["approval"]["approved_by"] to "someone-else"
+    let v be proof.verify_bundle(b, DID)
+    assert_eq(v.ok, false)
+    assert(length(where(v.failures, (f) => f.name == "signature")) >= 1)
+
+test "the real bundle's conformance report edit is caught"
+    let b be real_bundle()
+    set b.signed_statement["credentialSubject"]["conformance"]["verdict"] to "non_conformant"
+    let v be proof.verify_bundle(b, DID)
+    assert_eq(v.ok, false)
+    assert(length(where(v.failures, (f) => f.name == "signature")) >= 1)
+
+test "the real bundle's human assertion cannot be dropped"
+    let b be real_bundle()
+    set b["human_assertion"] to nothing
+    let v be proof.verify_bundle(b, DID)
+    assert_eq(v.ok, false)
+    assert_eq(v.summary, "REJECTED")
+
+test "a bundle whose proposal was edited after signing is REJECTED"
+    let b be build_bundle(build_proposal_good())
+    -- the attacker raises the price inside the stored bundle
+    set b.proposal["amount"] to 590
+    let v be proof.verify_bundle(b, DID)
+    assert_eq(v.ok, false)
+    assert_eq(v.summary, "REJECTED")
+    let names be where(v.failures, (f) => f.name == "proposal_integrity")
+    assert_eq(length(names), 1)
+
+test "a bundle whose intent was edited after signing is REJECTED"
+    let b be build_bundle(build_proposal_good())
+    set b.intent["raw"] to "book ANYTHING, no limit"
+    let v be proof.verify_bundle(b, DID)
+    assert_eq(v.ok, false)
+    assert_eq(length(where(v.failures, (f) => f.name == "intent_integrity")), 1)
+
+test "a bundle carrying a non-conformant verdict is REJECTED even though it is signed"
+    let b be build_bundle(build_proposal_bad())
+    let v be proof.verify_bundle(b, DID)
+    assert_eq(v.ok, false)
+    -- the signature is fine — the CONTENT is not
+    assert_eq(length(where(v.failures, (f) => f.name == "signature")), 0)
+    assert_eq(length(where(v.failures, (f) => f.name == "conformance")), 1)
+
+test "a LYING signer — who signs 'conformant' over a non-conformant proposal — is REJECTED"
+    -- the signature is genuine: the signer simply signed a false verdict.
+    -- Only recomputing the checks from the artifacts catches this.
+    let i be build_intent()
+    let p be build_proposal_bad()
+    let lying be {"verdict": "conformant", "checks": [], "passed": 4, "total": 4, "violations": []}
+    let ap be make_approval()
+    let st be proof.make_statement(i, p, lying, ap)
+    let signed be proof.sign_statement(st, KEY, DID)
+    let b be proof.make_bundle(i, p, lying, signed, {"approval": ap, "issuer": DID, "human_assertion": nothing})
+    let v be proof.verify_bundle(b, DID)
+    assert_eq(v.ok, false)
+    -- the signature itself is fine — it is the CONTENT that is a lie
+    assert_eq(length(where(v.failures, (f) => f.name == "signature")), 0)
+    assert_eq(length(where(v.failures, (f) => f.name == "verdict_recomputed")), 1)
+    assert_eq(length(where(v.failures, (f) => f.name == "conformance")), 1)
+
+test "swapping in a different proposal wholesale is REJECTED"
+    let honest be build_bundle(build_proposal_good())
+    let swapped be build_bundle(build_proposal_bad())
+    -- take the honest signature and put it on the bad bundle
+    set swapped["signed_statement"] to honest["signed_statement"]
+    let v be proof.verify_bundle(swapped, DID)
+    assert_eq(v.ok, false)
+    assert(length(v.failures) >= 2)
+
+-- ── audit findings (fixed) ────────────────────────────────────────────────
+
+test "malformed passkey material is REJECTED, not an error (fail-closed)"
+    let b be build_bundle(build_proposal_good())
+    -- a human assertion IS present, so the passkey path is exercised
+    set b["human_assertion"] to {"id": "cred-abc", "response": {"clientDataJSON": "AA"}}
+    -- the approval record carries the credential material; corrupt it
+    set b.signed_statement["credentialSubject"]["approval"]["credential_public_key"]["kty"] to "ECX"
+    let v be proof.verify_bundle(b, DID)
+    -- it must ANSWER, not raise
+    assert_ne(v, nothing)
+    assert_eq(v.ok, false)
+    assert_eq(v.summary, "REJECTED")
+    assert(length(where(v.failures, (f) => f.name == "human_approval")) >= 1)
+
+test "a corrupted passkey signature is REJECTED, not an error"
+    let b be build_bundle(build_proposal_good())
+    set b["human_assertion"] to {"id": "cred-abc", "response": {"clientDataJSON": "AA"}}
+    set b.signed_statement["credentialSubject"]["approval"]["credential_public_key"]["x"] to "AAAA"
+    let v be proof.verify_bundle(b, DID)
+    assert_ne(v, nothing)
+    assert_eq(v.ok, false)
+
+test "a bundle with NO human assertion is REJECTED — the human approval is mandatory"
+    let b be build_bundle(build_proposal_good())
+    let v be proof.verify_bundle(b, DID)
+    assert_ne(v, nothing)
+    assert_eq(v.ok, false)
+    assert_eq(v.summary, "REJECTED")
+    assert(length(where(v.failures, (f) => f.name == "human_approval")) >= 1)
+
+test "deleting the human assertion from an honest bundle is REJECTED"
+    let b be build_bundle(build_proposal_good())
+    set b["human_assertion"] to nothing
+    let v be proof.verify_bundle(b, DID)
+    assert_eq(v.ok, false)
+    assert_eq(v.summary, "REJECTED")
+
+test "the approval record lives INSIDE the signature, so it cannot be swapped"
+    -- an attacker swaps the approval record for a different credential
+    let b be build_bundle(build_proposal_good())
+    set b.signed_statement["credentialSubject"]["approval"]["credential_id"] to "cred-attacker"
+    let v be proof.verify_bundle(b, DID)
+    assert_eq(v.ok, false)
+    -- the signature covers it now, so the swap breaks the signature
+    assert(length(where(v.failures, (f) => f.name == "signature")) >= 1)
+
+test "approved_by and approved_at are covered by the signature"
+    let b be build_bundle(build_proposal_good())
+    set b.signed_statement["credentialSubject"]["approval"]["approved_by"] to "someone-else"
+    let v be proof.verify_bundle(b, DID)
+    assert_eq(v.ok, false)
+    assert(length(where(v.failures, (f) => f.name == "signature")) >= 1)
+
+test "the signed conformance report is covered by the signature"
+    let b be build_bundle(build_proposal_good())
+    set b.signed_statement["credentialSubject"]["conformance"]["verdict"] to "non_conformant"
+    let v be proof.verify_bundle(b, DID)
+    assert_eq(v.ok, false)
+    assert(length(where(v.failures, (f) => f.name == "signature")) >= 1)
+
+test "the bundle carries no unsigned copy of the approval or the conformance report"
+    let b be build_bundle(build_proposal_good())
+    assert_eq(contains(b, "approval"), false)
+    assert_eq(contains(b, "conformance"), false)
+
+test "a malformed constraint is REJECTED, not an error (fail-closed)"
+    let b be build_bundle(build_proposal_good())
+    -- remove the field from a constraint: the checker must ANSWER
+    set b.intent["constraints"][0]["field"] to nothing
+    let v be proof.verify_bundle(b, DID)
+    assert_ne(v, nothing)
+    assert_eq(v.summary, "REJECTED")
+    assert_eq(v.ok, false)
+
+test "an intent with no constraints at all cannot be conformant"
+    let b be build_bundle(build_proposal_good())
+    set b.intent["constraints"] to []
+    let v be proof.verify_bundle(b, DID)
+    assert_ne(v, nothing)
+    assert_eq(v.ok, false)
+    assert_eq(v.summary, "REJECTED")
+
+test "a bundle with a broken shape is REJECTED, not an error"
+    -- delete the credentialSubject entirely: the verifier must ANSWER
+    let b be build_bundle(build_proposal_good())
+    set b.signed_statement["credentialSubject"] to nothing
+    let v be proof.verify_bundle(b, DID)
+    assert_ne(v, nothing)
+    assert_eq(v.ok, false)
+    assert_eq(v.summary, "REJECTED")
+
+test "a bundle whose signed_statement is gone entirely is REJECTED, not an error"
+    let b be build_bundle(build_proposal_good())
+    set b["signed_statement"] to nothing
+    let v be proof.verify_bundle(b, DID)
+    assert_ne(v, nothing)
+    assert_eq(v.ok, false)
+    assert_eq(v.summary, "REJECTED")
+
+test "an empty bundle is REJECTED, not an error"
+    let v be proof.verify_bundle({}, DID)
+    assert_ne(v, nothing)
+    assert_eq(v.ok, false)
+    assert_eq(v.summary, "REJECTED")

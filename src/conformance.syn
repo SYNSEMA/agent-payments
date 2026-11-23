@@ -1,0 +1,139 @@
+-- intent-proof · lib/conformance.syn
+-- The checker: does the agent's proposal satisfy the user's constraints?
+--
+-- This is the piece the market does not have. Agentcard records
+-- "user approved merchant X for amount Y"; it does not record whether the
+-- purchase satisfied the request. A $580 non-refundable hotel inside a
+-- $600 budget PASSES an approval check and still violates the user's intents.
+
+use "./intent.syn" as intents
+
+-- Evaluate one constraint against one proposal.
+-- Returns {"constraint": <c>, "ok": bool, "observed": <v>, "detail": <text>}.
+export task check_constraint(c, proposal)
+    -- FAIL-CLOSED on a malformed constraint: a constraint we cannot read is a
+    -- constraint that does not hold. It must NEVER raise — a verifier that
+    -- crashes on a tampered artifact answers nothing, and "nothing" is not a
+    -- verdict. Every field is read with get() and a missing one is a failure.
+    let field be get(c, "field", nothing)
+    when field == nothing
+        give {"constraint": c, "ok": false, "observed": nothing,
+              "detail": "the constraint is malformed (it names no field)"}
+    let op be get(c, "op", nothing)
+    when op == nothing
+        give {"constraint": c, "ok": false, "observed": nothing,
+              "detail": "the constraint is malformed (it names no operator)"}
+    let bound be get(c, "value", nothing)
+    when bound == nothing
+        give {"constraint": c, "ok": false, "observed": nothing,
+              "detail": "the constraint is malformed (it names no bound)"}
+    let observed be get(proposal, field, nothing)
+    let ok be false
+    let detail be ""
+
+    -- The comparisons below can raise if the types do not line up (a proposal
+    -- whose amount is a STRING, a bound that is a list). A tampered artifact
+    -- must never make the checker raise — so the whole comparison runs inside
+    -- a try, and any error becomes a failed constraint.
+    let compare be {"ok": false, "observed": observed,
+                    "detail": "the proposal's " + field + " could not be compared against the constraint"}
+    try
+        set compare to evaluate_constraint(op, field, bound, observed)
+    recover err
+        set compare to {"ok": false, "observed": observed,
+                        "detail": "the proposal's " + field + " could not be compared against the constraint"}
+    give {"constraint": c, "ok": compare.ok, "observed": observed, "detail": compare.detail}
+
+-- Evaluate one constraint. Extracted so the try/recover in check_constraint
+-- wraps exactly the comparison, with no side effects.
+task evaluate_constraint(op, field, bound, observed)
+    let ok be false
+    let detail be ""
+
+    when op == "<="
+        when observed == nothing
+            set detail to "the proposal does not state a " + field
+        otherwise when observed > bound
+            set detail to "the proposal's " + field + " (" + text(observed) + ") exceeds the limit (" + text(bound) + ")"
+        otherwise
+            set ok to true
+            set detail to "within the limit (" + text(observed) + " <= " + text(bound) + ")"
+
+    when op == "=="
+        when observed == nothing
+            set detail to "the proposal does not state a " + field
+        otherwise when observed != bound
+            set detail to "the proposal's " + field + " is " + text(observed) + ", not " + text(bound)
+        otherwise
+            set ok to true
+            set detail to "matches (" + text(observed) + ")"
+
+    when op == ">="
+        when observed == nothing
+            set detail to "the proposal does not state a " + field
+        otherwise when observed < bound
+            set detail to "the proposal's " + field + " (" + text(observed) + ") is below the required minimum (" + text(bound) + ")"
+        otherwise
+            set ok to true
+            set detail to "meets the minimum (" + text(observed) + " >= " + text(bound) + ")"
+
+    when op == "contains"
+        when observed == nothing
+            set detail to "the proposal does not state a " + field
+        otherwise when not contains(observed, bound)
+            set detail to "the proposal's " + field + " does not contain " + text(bound)
+        otherwise
+            set ok to true
+            set detail to "contains " + text(bound)
+
+    when op == "in"
+        when observed == nothing
+            set detail to "the proposal does not state a " + field
+        otherwise when not (observed in bound)
+            set detail to "the proposal's " + field + " is not among the allowed ones"
+        otherwise
+            set ok to true
+            set detail to "one of the allowed ones"
+
+    give {"ok": ok, "observed": observed, "detail": detail}
+
+-- Evaluate every constraint. The verdict is "conformant" only if EVERY
+-- constraint holds. There is no partial credit and no "close enough":
+-- an agent that books the wrong rate is non-conformant, period.
+export task check_all(user_intent, proposal)
+    let results be []
+    let cs be get(user_intent, "constraints", nothing)
+    when cs == nothing
+        give {
+            "verdict": "non_conformant",
+            "checks": [],
+            "passed": 0,
+            "total": 0,
+            "violations": [{"constraint": {}, "ok": false, "observed": nothing,
+                            "detail": "the request names no constraints, so nothing can be shown to conform"}]
+        }
+    each c in cs
+        set results to append(results, check_constraint(c, proposal))
+
+    let failed be where(results, (r) => r.ok == false)
+    let verdict be when length(failed) == 0 then "conformant" otherwise "non_conformant"
+
+    give {
+        "verdict": verdict,
+        "checks": results,
+        "passed": length(results) - length(failed),
+        "total": length(results),
+        "violations": where(results, (r) => r.ok == false)
+    }
+
+-- The line the user reads at approval time: what was asked, what was proposed,
+-- and whether the proposal actually satisfies the request. This is the string
+-- the human signs.
+export task describe(user_intent, proposal, verdict)
+    let lines be ["REQUEST: " + get(user_intent, "raw", "(no request text)"), "PROPOSAL: " + get(proposal, "summary", "(no proposal)")]
+    each c in user_intent.constraints
+        each r in verdict.checks
+            when r.constraint == c
+                set lines to append(lines, "  [" + (when r.ok then "ok " otherwise "NO ") + "] " + get(c, "label", "(unnamed constraint)") + " — " + r.detail)
+    set lines to append(lines, "VERDICT: " + verdict.verdict)
+    give join(lines, "\n")

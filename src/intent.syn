@@ -1,0 +1,83 @@
+-- intent-proof · src/intent.syn
+-- The intent model: what the USER asked for, as structured constraints.
+-- This is the thing Agentcard records (merchant + amount) and does NOT verify
+-- ("was the purchase what the user actually wanted?").
+
+export let INTENT_VERSION be "intent-proof/intent/1"
+
+-- A constraint is a map:
+--   {"kind": "budget"|"category"|"attribute"|"quantity",
+--    "field": "<the field of the proposal it constrains>",
+--    "op":    "<= | == | in | >= | contains",
+--    "value": <the bound>,
+--    "label": "<human sentence, shown to the user at approval time>"}
+--
+-- ORDERING NOTE (learned the hard way): ">=" is only meaningful on NUMBERS.
+-- A string comparison is lexicographic, so "none" >= "day_before_checkin" is
+-- TRUE and a non-refundable rate sails through as valid. Anything ordinal
+-- (days of notice, number of nights) MUST be modelled as a number.
+
+export task budget_constraint(max_amount, currency)
+    give {
+        "kind": "budget",
+        "field": "amount",
+        "op": "<=",
+        "value": max_amount,
+        "currency": currency,
+        "label": "no more than " + text(max_amount) + " " + currency
+    }
+
+export task category_constraint(category)
+    give {
+        "kind": "category",
+        "field": "category",
+        "op": "==",
+        "value": category,
+        "label": "a " + category
+    }
+
+-- An ordinal attribute compared with >= (days of notice, nights, ...).
+export task min_attribute_constraint(field, min_value, label)
+    give {
+        "kind": "attribute",
+        "field": field,
+        "op": ">=",
+        "value": min_value,
+        "label": label
+    }
+
+-- An exact attribute compared with == (a specific room type, a brand, ...).
+export task exact_attribute_constraint(field, value, label)
+    give {
+        "kind": "attribute",
+        "field": field,
+        "op": "==",
+        "value": value,
+        "label": label
+    }
+
+-- The refund policy, modelled as DAYS OF NOTICE. 0 = non-refundable.
+export task refundable_constraint(min_days)
+    give {
+        "kind": "attribute",
+        "field": "refundable_days",
+        "op": ">=",
+        "value": min_days,
+        "label": "free cancellation until at least " + text(min_days) + " day(s) before"
+    }
+
+-- The intent as a whole: raw text (what the user literally typed) plus the
+-- constraints we extracted from it. The raw text is kept because it is the
+-- legal record of what was asked; the constraints are the machine-checkable form.
+export task make_intent(raw, constraints)
+    give {
+        "version": INTENT_VERSION,
+        "raw": raw,
+        "constraints": constraints
+    }
+
+-- Deterministic fingerprint of an intent. Two intents with the same fingerprint
+-- are byte-identical under RFC 8785 canonicalization, so a fingerprint is a
+-- commitment to the exact request — not a summary that could collide.
+export task intent_fingerprint(user_intent)
+    give "sha256:" + slice(hex(sha256(canonical_json(user_intent))), 2)

@@ -1,0 +1,306 @@
+-- intent-proof · lib/proof.syn
+-- The proof: a signed, offline-verifiable bundle that says
+--   "the user asked for X, the agent proposed Y, Y satisfies X, and the user
+--    authorized exactly Y."
+--
+-- Three independent commitments, so that no single party can forge the whole:
+--
+--   1. intent_fingerprint  — a commitment to WHAT WAS ASKED
+--   2. proposal_fingerprint — a commitment to WHAT WAS PROPOSED
+--   3. approval signature   — a commitment that a HUMAN said yes to THAT proposal
+--
+-- The signature is a W3C Data Integrity proof over RFC 8785 canonical JSON
+-- (Ed25519 / did:key), so any third party can verify it offline with only
+-- the public key. No server, no network, no trust in the platform.
+
+use "./intent.syn" as intents
+use "./conformance.syn" as conf
+
+export let PROOF_VERSION be "intent-proof/proof/1"
+
+-- Deterministic fingerprint of a proposal.
+export task proposal_fingerprint(proposal)
+    give "sha256:" + slice(hex(sha256(canonical_json(proposal))), 2)
+
+-- The authorization statement. It binds BOTH fingerprints plus the verdict, so
+-- a signature over it says "yes, to this exact proposal, and I checked it
+-- against this exact request".
+--
+-- Shaped as a W3C Verifiable Credential: the credentialSubject carries the
+-- commitments, the proof covers the whole document.
+export task make_statement(user_intent, proposal, verdict, approval)
+    give {
+        "@context": ["https://www.w3.org/2018/credentials/v1"],
+        "type": ["VerifiableCredential", "IntentProof"],
+        "issuer": approval.issuer,
+        "credentialSubject": {
+            "version": PROOF_VERSION,
+            "intent_fingerprint": intents.intent_fingerprint(user_intent),
+            "proposal_fingerprint": proposal_fingerprint(proposal),
+            "verdict": verdict.verdict,
+            -- The WHOLE approval record and the WHOLE conformance report live
+            -- INSIDE the signed subject. An earlier version kept them as
+            -- unsigned copies beside it: anyone could rewrite "approved_by" or
+            -- "approved_at" and the verifier would not notice. A field that
+            -- is not covered by the signature is a field nobody can defend.
+            "approval": approval,
+            "conformance": verdict
+        }
+    }
+
+-- Sign the statement. `key` is an ed25519 secret under the label in
+-- `require sign("...")`; the did:key is derived from it.
+export task sign_statement(statement, key, did)
+    let parts be did_key_decode(did)
+    give document_sign(statement, key, {"verification_method": did + "#" + parts.multibase})
+
+-- Verify a signed statement against a public did:key.
+-- Returns nothing on ANY failure — never a partial success, never a reason.
+export task verify_statement(signed, did)
+    give document_verify(signed, did)
+
+-- Rebuild the statement from the recorded artifacts and check it matches the
+-- signed one. This is what catches a tampered bundle: if someone edits the
+-- proposal in the file, the rebuilt statement differs from the signed one.
+export task statement_matches(signed, user_intent, proposal, verdict, approval)
+    let rebuilt be make_statement(user_intent, proposal, verdict, approval)
+    give rebuilt == signed.credentialSubject
+
+-- The full bundle: everything a third party needs, and nothing they don't.
+export task make_bundle(user_intent, proposal, verdict, signed, extra)
+    -- EVERY field here is covered by the signature or by a fingerprint:
+    --   intent / proposal      → their sha256 fingerprints are signed
+    --   signed_statement       → the signature itself
+    --   human_assertion        → the WebAuthn assertion signature
+    -- There is deliberately NO unsigned copy of the approval or the
+    -- conformance report outside the signed subject.
+    give {
+        "intent": user_intent,
+        "proposal": proposal,
+        "signed_statement": signed,
+        "human_assertion": get(extra, "human_assertion", nothing)
+    }
+
+-- Offline verification of a bundle. Returns a verdict map:
+--   {"ok": bool, "checks": [{"name","ok","detail"}], "failures": [...]}
+--
+-- Every check is independent and re-derived from the bundle itself. A bundle
+-- that has been edited anywhere fails the check that covers it.
+-- The public entry point. FAIL-CLOSED on a malformed bundle: a bundle whose
+-- shape is broken (a missing credentialSubject, a missing approval, ...) must
+-- produce a REJECTED verdict, never an exception. A verifier that raises on a
+-- tampered artifact answers nothing — and "nothing" is not a verdict.
+export task verify_bundle(bundle, issuer_did)
+    let res be {"ok": false, "checks": [], "failures": [], "summary": "REJECTED"}
+    try
+        set res to verify_bundle_inner(bundle, issuer_did)
+    recover err
+        let why be "the bundle is malformed and cannot be verified: " + text(err)
+        set res to {
+            "ok": false,
+            "checks": [{"name": "bundle_wellformed", "ok": false, "detail": why}],
+            "failures": [{"name": "bundle_wellformed", "ok": false, "detail": why}],
+            "summary": "REJECTED"
+        }
+    give res
+
+task verify_bundle_inner(bundle, issuer_did)
+    let checks be []
+
+    -- 1. the signature over the statement is genuine and from the claimed issuer
+    --    The proof's verificationMethod must ALSO name that issuer: a proof
+    --    that signs correctly but claims somebody else's key id is a bundle
+    --    that misattributes the authority, and a verifier that ignores it
+    --    would report "verified" for a bundle signed by a key it was not
+    --    told about.
+    let sig_ok be false
+    let sig_detail be "the signature does not verify against " + issuer_did
+    try
+        let proof_map be get(bundle.signed_statement, "proof", {})
+        let vm be get(proof_map, "verificationMethod", "")
+        let expected_vm be issuer_did + "#" + slice(issuer_did, 8)
+        let signed_ok be verify_statement(bundle.signed_statement, issuer_did) != nothing
+        when signed_ok and vm == expected_vm
+            set sig_ok to true
+            set sig_detail to "the statement carries a valid signature from " + issuer_did
+        otherwise when signed_ok
+            set sig_detail to "the signature verifies, but the proof's verificationMethod does not name " + issuer_did
+        otherwise
+            set sig_detail to "the signature does not verify against " + issuer_did
+    recover err
+        set sig_ok to false
+        set sig_detail to "the signed statement is malformed and cannot be verified: " + text(err)
+
+    set checks to append(checks, {
+        "name": "signature",
+        "ok": sig_ok,
+        "detail": sig_detail
+    })
+
+    -- 2. the recorded intent is the one the fingerprint commits to
+    let i_fp be intents.intent_fingerprint(bundle.intent)
+    let i_ok be i_fp == bundle.signed_statement.credentialSubject.intent_fingerprint
+    set checks to append(checks, {
+        "name": "intent_integrity",
+        "ok": i_ok,
+        "detail": when i_ok then "the intent matches the fingerprint that was signed"
+                   otherwise "the intent was modified after signing"
+    })
+
+    -- 3. the recorded proposal is the one the fingerprint commits to
+    let p_fp be proposal_fingerprint(bundle.proposal)
+    let p_ok be p_fp == bundle.signed_statement.credentialSubject.proposal_fingerprint
+    set checks to append(checks, {
+        "name": "proposal_integrity",
+        "ok": p_ok,
+        "detail": when p_ok then "the proposal matches the fingerprint that was signed"
+                   otherwise "the proposal was modified after signing"
+    })
+
+    -- 4. re-run the conformance check from scratch and compare to the verdict
+    --    that was signed. A verdict the signer did not compute is a verdict
+    --    nobody can defend.
+    let recomputed be conf.check_all(bundle.intent, bundle.proposal)
+    let v_ok be recomputed.verdict == bundle.signed_statement.credentialSubject.verdict
+    set checks to append(checks, {
+        "name": "verdict_recomputed",
+        "ok": v_ok,
+        "detail": when v_ok then "re-running the checks yields the signed verdict (" + recomputed.verdict + ")"
+                   otherwise "re-running the checks yields " + recomputed.verdict + ", but the signed verdict says " + bundle.signed_statement.credentialSubject.verdict
+    })
+
+    -- 5. the RECOMPUTED verdict must be conformant for the approval to mean
+    --    anything. Note it is the recomputed one, not the signed one: the
+    --    signed verdict is the signer's CLAIM, and a signer who lies would
+    --    sign "conformant" over a proposal that is not. Only recomputing
+    --    from the artifacts tells the truth.
+    let conf_ok be recomputed.verdict == "conformant"
+    set checks to append(checks, {
+        "name": "conformance",
+        "ok": conf_ok,
+        "detail": when conf_ok then "the approved proposal satisfies every constraint of the request"
+                   otherwise "the approved proposal does NOT satisfy the request: " + join(apply(recomputed.violations, (r) => text(r.detail)), "; ")
+    })
+
+    -- 6. the approval record is INSIDE the signed subject, so "who approved,
+    --    when, and with which credential" is covered by the signature. The
+    --    verifier reads it from there — never from an unsigned copy.
+    let signed_approval be get(bundle.signed_statement.credentialSubject, "approval", nothing)
+    let ap_present be signed_approval != nothing
+    set checks to append(checks, {
+        "name": "approval_signed",
+        "ok": ap_present,
+        "detail": when ap_present then "the approval record is covered by the signature"
+                   otherwise "the signed statement carries no approval record"
+    })
+
+    -- 7. the human's own assertion must verify against the SIGNED credential.
+    --    This is the human-in-the-loop proof: the signature was made by a
+    --    device the user controls, over a challenge the server issued.
+    -- The human approval is MANDATORY. An earlier version treated a missing
+    -- assertion as "nothing to check" and returned ok — which meant a bundle
+    -- with NO passkey proof at all still verified as VERIFIED. The whole
+    -- claim of this product is that a human authorized it; without the
+    -- human's signature there is nothing to defend.
+    let human_ok be false
+    let human_detail be "the bundle carries no human assertion: an approval without the human's passkey is not a proof"
+    when ap_present and contains(bundle, "human_assertion") and bundle.human_assertion != nothing
+        let hv be human_assertion_ok(bundle.human_assertion, signed_approval)
+        set human_ok to hv.ok
+        set human_detail to hv.detail
+
+    set checks to append(checks, {
+        "name": "human_approval",
+        "ok": human_ok,
+        "detail": human_detail
+    })
+
+    -- 8. the assertion must be the one the signed approval names. WebAuthn
+    --    does not cover the credential id in its signature, so the binding has
+    --    to be checked explicitly.
+    let id_ok be false
+    let id_detail be "the bundle carries no human assertion"
+    when ap_present and contains(bundle, "human_assertion") and bundle.human_assertion != nothing
+        let declared be get(bundle.human_assertion, "id", nothing)
+        let expected be get(signed_approval, "credential_id", nothing)
+        set id_ok to declared == expected
+        when id_ok
+            set id_detail to "the assertion is the credential the signed approval names"
+        otherwise
+            set id_detail to "the assertion names a different credential than the signed approval"
+
+    set checks to append(checks, {
+        "name": "assertion_binding",
+        "ok": id_ok,
+        "detail": id_detail
+    })
+
+    -- 9. WebAuthn's signature does NOT cover the assertion's `type`, `rawId`
+    --    or `userHandle` — the spec leaves them out on purpose. They carry no
+    --    authority, but they are fields in the bundle, so they still have to
+    --    agree with what the signed approval says. This is what makes the
+    --    claim "every field in the bundle is authenticated" literally true.
+    let shape_ok be true
+    let shape_detail be "no human assertion recorded"
+    when ap_present and contains(bundle, "human_assertion") and bundle.human_assertion != nothing
+        let a be bundle.human_assertion
+        let expected_handle be get(signed_approval, "user_handle", nothing)
+        let type_ok be get(a, "type", "") == "public-key"
+        let raw_ok be get(a, "rawId", nothing) == get(a, "id", nothing)
+        let handle_ok be get(get(a, "response", {}), "userHandle", nothing) == expected_handle
+        set shape_ok to type_ok and raw_ok and handle_ok
+        when type_ok and raw_ok and handle_ok
+            set shape_detail to "the assertion's type, rawId and userHandle agree with the signed approval"
+        otherwise
+            let why be ""
+            when not type_ok
+                set why to why + "the assertion's type is not public-key; "
+            when not raw_ok
+                set why to why + "the assertion's rawId does not match its id; "
+            when not handle_ok
+                set why to why + "the assertion's userHandle does not match the signed approval; "
+            set shape_detail to why
+
+    set checks to append(checks, {
+        "name": "assertion_shape",
+        "ok": shape_ok,
+        "detail": shape_detail
+    })
+
+    let failures be where(checks, (c) => c.ok == false)
+    give {
+        "ok": length(failures) == 0,
+        "checks": checks,
+        "failures": failures,
+        "summary": when length(failures) == 0 then "VERIFIED" otherwise "REJECTED"
+    }
+
+-- Verify the WebAuthn assertion the browser produced, against the credential
+-- the server registered, and against the challenge the server issued.
+export task human_assertion_ok(assertion, approval)
+    -- FAIL-CLOSED: malformed passkey material is a REJECTION, never an error.
+    -- Before this fix, a bundle with a corrupted public_key made the verifier
+    -- raise (HTTP 500) instead of answering REJECTED — a third party handing
+    -- you garbage must get a verdict, not a stack trace.
+    let res be {"ok": false, "detail": "the human's passkey assertion does not verify (wrong challenge, wrong origin, or a different device)"}
+    try
+        let opts be {
+            "rp_id": approval.rp_id,
+            "origin": approval.origin,
+            "challenge": approval.challenge,
+            "user_verification": "preferred"
+        }
+        let stored be {
+            "id": approval.credential_id,
+            "public_key": approval.credential_public_key,
+            "sign_count": approval.sign_count
+        }
+        let v be webauthn_verify(assertion, stored, opts)
+        when v != nothing
+            set res to {
+                "ok": true,
+                "detail": "the passkey assertion verifies (user_present=" + text(v.user_present) + ", user_verified=" + text(v.user_verified) + ")"
+            }
+    recover err
+        set res to {"ok": false, "detail": "the passkey material in the bundle is malformed and cannot be verified"}
+    give res

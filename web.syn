@@ -1,0 +1,272 @@
+-- intent-proof · src/app.syn
+-- The server: a small API + a static UI that shows the whole flow.
+--
+-- Routes:
+--   GET  /api/state      → the current session state
+--   POST /api/ask        → the user states what they want. The agent makes a first proposal.
+--   POST /api/retry      → the agent tries again with a proposal that satisfies the constraints.
+--   GET  /api/challenge  → a fresh WebAuthn challenge for this origin.
+--   POST /api/register   → register the user's passkey.
+--   POST /api/approve    → the human approves with the passkey; the proof bundle is produced.
+--   POST /api/verify     → verify a bundle and return the verdict.
+--
+-- The signing key lives in the server (that is the platform's key). The VERIFIER
+-- never needs it — only the public did:key — which is the point: a third party
+-- checks the bundle without trusting this server.
+
+require env("PORT")
+require serve(env("PORT", 8477))
+require file.read("./web/**")
+require random
+require sign("ISSUER")
+require time
+
+use "./src/intent.syn" as intents
+use "./src/conformance.syn" as conf
+use "./src/proof.syn" as proof
+
+-- ── keys ───────────────────────────────────────────────────────────────────
+-- A fixed development seed so the demo is reproducible. In production this
+-- comes from a secret store; the did:key is published, the seed never is.
+let ISSUER_SEED be bytes("0303030303030303030303030303030303030303030303030303030303030303", "hex")
+let ISSUER_KEY be as_secret(ISSUER_SEED, "ISSUER")
+let ISSUER_DID be did_key_encode(ed25519_pubkey(ISSUER_KEY))
+
+-- ── the scenario ───────────────────────────────────────────────────────────
+-- A realistic intent, and an agent whose FIRST proposal is plausible but wrong
+-- in a way that only a constraint check catches.
+
+task scenario_intent()
+    give intents.make_intent(
+        "book a hotel in NYC for 2 nights under $600 total, free cancellation until the day before arrival",
+        [
+            intents.budget_constraint(600, "USD"),
+            intents.category_constraint("hotel"),
+            intents.exact_attribute_constraint("nights", 2, "exactly 2 nights"),
+            intents.refundable_constraint(1)
+        ])
+
+-- The agent's first attempt: inside budget, right category, right nights —
+-- but the NON-REFUNDABLE rate. The kind of mistake that passes a $600 check.
+task proposal_first()
+    give {
+        "merchant": "The Standard, NYC",
+        "merchant_id": "standard-nyc",
+        "summary": "The Standard NYC — 2 nights, $580, non-refundable rate",
+        "category": "hotel",
+        "amount": 580,
+        "currency": "USD",
+        "nights": 2,
+        "refundable_days": 0
+    }
+
+-- The agent's second attempt, after the check sent it back.
+task proposal_second()
+    give {
+        "merchant": "The Standard, NYC",
+        "merchant_id": "standard-nyc",
+        "summary": "The Standard NYC — 2 nights, $540, free cancellation until 24h before arrival",
+        "category": "hotel",
+        "amount": 540,
+        "currency": "USD",
+        "nights": 2,
+        "refundable_days": 1
+    }
+
+-- ── session state ──────────────────────────────────────────────────────────
+-- state_* (not a global): a write to a global does NOT survive the request.
+
+task session()
+    give state_get("session", {
+        "intent": nothing, "proposal": nothing, "verdict": nothing,
+        "bundle": nothing, "attempts": 0, "challenge": nothing,
+        "credential": nothing, "human_assertion": nothing
+    })
+
+task set_session(s)
+    state_set("session", s)
+    give true
+
+task with_assertion(b)
+    let a be session()["human_assertion"]
+    when a == nothing
+        give b
+    give merge(b, {"human_assertion": a})
+
+-- ── helpers ────────────────────────────────────────────────────────────────
+
+task base64url_random(n)
+    give decode(random_bytes(n), "base64url")
+
+task current_origin()
+    -- The origin the browser will present. WebAuthn pins origin exactly, so
+    -- this must match what the page was served from.
+    give "http://localhost:8477"
+
+task rp_id()
+    give "localhost"
+
+-- ── routes ─────────────────────────────────────────────────────────────────
+
+serve on env("PORT", 8477)
+    static "./web"
+    cors "*"
+
+    describe
+        about: "intent-proof — verifiable authorization for agent purchases"
+        api: "Intent proof API"
+        version: "intent-proof/1"
+
+    route "GET /api/state"
+        let s be session()
+        give {
+            "issuer": ISSUER_DID,
+            "origin": current_origin(),
+            "rp_id": rp_id(),
+            "session": s,
+            "has_credential": s.credential != nothing,
+            "credential_id": when s.credential == nothing then nothing otherwise s.credential.id,
+            "challenge": s.challenge
+        }
+
+    -- The user states what they want. We derive the intent and let the agent try.
+    route "POST /api/ask"
+        expect body {text: text}
+        let s be session()
+        set s["intent"] to scenario_intent()
+        set s["attempts"] to 1
+        set s["bundle"] to nothing
+        let p be proposal_first()
+        set s["proposal"] to p
+        let v be conf.check_all(s.intent, p)
+        set s["verdict"] to v
+        set_session(s)
+        give {
+            "intent": s.intent,
+            "proposal": p,
+            "verdict": v,
+            "narrative": conf.describe(s.intent, p, v),
+            "attempt": 1
+        }
+
+    -- The agent retries with a proposal that satisfies the constraints.
+    route "POST /api/retry"
+        let s be session()
+        when s.intent == nothing
+            give fail(400, "no intent yet — call POST /api/ask first")
+        set s["attempts"] to 2
+        set s["bundle"] to nothing
+        let p be proposal_second()
+        set s["proposal"] to p
+        let v be conf.check_all(s.intent, p)
+        set s["verdict"] to v
+        set_session(s)
+        give {
+            "intent": s.intent,
+            "proposal": p,
+            "verdict": v,
+            "narrative": conf.describe(s.intent, p, v),
+            "attempt": 2
+        }
+
+    -- A fresh challenge for the passkey ceremony.
+    route "GET /api/challenge"
+        let s be session()
+        let ch be base64url_random(32)
+        set s["challenge"] to ch
+        set_session(s)
+        give {"challenge": ch, "rp_id": rp_id(), "origin": current_origin()}
+
+    -- Register the user's passkey (first time).
+    route "POST /api/register"
+        expect body {credential: map}
+        let s be session()
+        let ch be s.challenge
+        when ch == nothing
+            give fail(400, "no challenge — call GET /api/challenge first")
+        let reg be webauthn_register(request.json.credential, {
+            "rp_id": rp_id(),
+            "origin": current_origin(),
+            "challenge": ch
+        })
+        when reg == nothing
+            give fail(400, "the passkey could not be registered (wrong origin or challenge)")
+        set s["credential"] to reg
+        set_session(s)
+        give {"ok": true, "credential_id": reg.id, "user_verified": reg.user_verified}
+
+    -- The human approves with the passkey, and the proof bundle is produced.
+    route "POST /api/approve"
+        expect body {assertion: map}
+        let s be session()
+        let i be s.intent
+        let p be s.proposal
+        let v be s.verdict
+        let cred be s.credential
+        when i == nothing or p == nothing
+            give fail(400, "nothing to approve yet")
+        when cred == nothing
+            give fail(400, "no passkey registered yet")
+        when v.verdict != "conformant"
+            give fail(409, "the proposal does not satisfy the request — the agent must retry before the user is asked")
+
+        -- verify the human's assertion against the registered credential and the
+        -- challenge WE issued. A wrong origin / challenge / device → nothing.
+        let ch be s.challenge
+        let hv be webauthn_verify(request.json.assertion, cred, {
+            "rp_id": rp_id(),
+            "origin": current_origin(),
+            "challenge": ch,
+            "user_verification": "preferred"
+        })
+        when hv == nothing
+            give fail(401, "the passkey assertion does not verify")
+
+        let ap be {
+            "approved_at": now(),
+            "approved_by": "user-1",
+            "credential_id": cred.id,
+            "issuer": ISSUER_DID,
+            "rp_id": rp_id(),
+            "origin": current_origin(),
+            "challenge": ch,
+            "credential_public_key": cred.public_key,
+            "sign_count": cred.sign_count,
+            -- the userHandle the assertion carries, recorded inside the
+            -- signature so the bundle's copy can be checked against it
+            "user_handle": get(request.json.assertion, "response", {})["userHandle"]
+        }
+
+        let st be proof.make_statement(i, p, v, ap)
+        let signed be proof.sign_statement(st, ISSUER_KEY, ISSUER_DID)
+        let b be proof.make_bundle(i, p, v, signed, {"approval": ap, "issuer": ISSUER_DID, "human_assertion": request.json.assertion})
+        set s["bundle"] to b
+        set s["human_assertion"] to request.json.assertion
+        set_session(s)
+        give {"bundle": b, "verdict": proof.verify_bundle(with_assertion(b), ISSUER_DID)}
+
+    -- Batch verification, for the mutation audit. One request, many bundles.
+    route "POST /api/audit"
+        expect body {bundles: list}
+        let out be []
+        each b in request.json.bundles
+            let v be proof.verify_bundle(b, ISSUER_DID)
+            set out to append(out, {
+                "ok": v.ok,
+                "summary": v.summary,
+                "failed": where(v.checks, (c) => c.ok == false)
+            })
+        give {"verdicts": out}
+
+    -- Verify a bundle. This is what a third party runs.
+    route "POST /api/verify"
+        expect body {bundle: map}
+        let b be request.json.bundle
+        give proof.verify_bundle(b, ISSUER_DID)
+
+    -- Return the bundle with the human assertion attached.
+    route "GET /api/bundle"
+        let s be session()
+        when s.bundle == nothing
+            give fail(404, "no bundle yet")
+        give with_assertion(s.bundle)

@@ -1,0 +1,206 @@
+# INDEX — the project's map
+
+> **If you are picking this up with Hermes, read this file first.** It is self-contained.
+> **Repo:** `github.com/SYNSEMA/agent-payments` · **Folder on disk:** `~/Desktop/intent-proof`
+> Last updated: 22-nov-2026, after the repo was assembled.
+
+---
+
+## 0. The three names, and why there are three
+
+| | |
+|---|---|
+| **CSIBEINGS LLC** | the legal entity (US, Wyoming, with EIN). Owns the commercial trust service |
+| **SYNSEMA** | the language, and the GitHub org that holds the OSS portfolio. **Never renamed** |
+| **agent-payments** | **the repo, and the recipe.** The portable evidence format. Apache-2.0, forever |
+
+The folder on disk is still called `intent-proof` — that is the project's working name and the name
+of the internal format version strings (`intent-proof/intent/1`, `intent-proof/proof/1`), which
+**cannot change** without invalidating every existing bundle.
+
+---
+
+## 1. What this repo is
+
+A **format**, not a service: a signed bundle that lets a third party verify, offline and with
+public keys only, that a purchase made by an AI agent was requested and approved by a human **and
+that the purchase meets the request**.
+
+**Three ways to use it**, and the recipe is only the first:
+
+| | How |
+|---|---|
+| Deploy it | `syn deploy` (the [Synsema platform](https://synsema.com) CLI, Vercel-style) |
+| Run it anywhere | `synsema serve web.syn` — no account, no network, no platform |
+| Just verify | `node reference/ts/verify.mjs bundle.json` — Node 20+, **zero dependencies** |
+
+**The format does not depend on Synsema.** The spec is plain text; the verifiers are TypeScript and
+Rust. Synsema is the reference implementation and the ergonomic way in — not a dependency.
+
+---
+
+## 2. The map
+
+```
+spec/SPEC.md                    ← THE NORMATIVE DOCUMENT. Read this first.
+spec/bundle.schema.json         the JSON Schema of a bundle
+spec/pscp/0000-template.md      how the specification changes
+
+reference/ts/verify.mjs         the TypeScript verifier (ZERO dependencies)
+reference/rust/                 the Rust verifier (crates.io dependencies)
+reference/implementations.md    the registry of independent implementations
+
+testvectors/valid/              must verify
+testvectors/invalid/            must be rejected — one file per attack
+scripts/make-vectors.mjs        derives the vectors from the golden file
+scripts/verify-vectors.sh       runs the Synsema verifier over the whole set
+
+src/                            the reference implementation in Synsema
+  intent.syn                    request → constraints
+  conformance.syn               the checker
+  proof.syn                     signing, approval, bindings, the nine checks
+  verify.syn                    the offline verifier
+  proof.test.syn                31 tests
+web.syn                         the console (the recipe's entry)
+web/index.html                  the console's UI
+
+LICENSE  NOTICE  PATENTS.md  GOVERNANCE.md  CONTRIBUTING.md
+CODE_OF_CONDUCT.md  SECURITY.md  CITATION.cff  CHANGELOG.md  REUSE.toml
+syn.toml                        the recipe manifest
+synsema.json                    the project file (minimum engine: 0.6.66)
+
+research/                       the strategy, the thesis and the raw market research
+  THESIS.md  GTM.md  OPEN.md  POSITIONING.md  NAMING.md  ORG-AND-NAME.md
+```
+
+---
+
+## 3. Verified state (22-nov-2026)
+
+| | |
+|---|---|
+| Unit tests | **31/31** |
+| Mutation audit | **291/291 rejected, 0 accepted, 0 crashes** |
+| TypeScript verifier | **1/1 valid verified, 13/13 invalid rejected** |
+| Rust verifier | **4/4 tests ok** (same vector set) |
+| Synsema verifier over the vector set | **14/14 as specified** |
+| The three implementations agree | ✅ on every vector |
+| `./demo.cmd` | exit **0** |
+| The console | serves on 8477, `/api/state` answers |
+
+**Everything above was executed, not assumed.**
+
+---
+
+## 4. 🔒 Decided (do not reopen)
+
+1. **CSIBEINGS LLC** (entity) · **SYNSEMA** (language/org) · **agent-payments** (recipe/repo).
+2. **The licence never changes.** Apache-2.0 + explicit patent grant + DCO. The language's own
+   source is already Apache-2.0, so this is continuity.
+3. **No separate neutral org now.** The trigger is countable: **3 independent implementers** outside
+   this org → then `spec/` moves to a neutral steward.
+4. **The format is free forever**; the money is in trust (custody, rotation, availability, evidence
+   an auditor accepts).
+5. **`agent-payments` is the portable one** — no enclave, no host keys. The existing
+   `vela-policy-engine` recipe is its host-bound twin.
+6. **No access to anyone's conversations.** It is a library the agent's own runtime calls at the
+   point of authorisation.
+7. **No money spent** until someone buys or commits to buy.
+
+## 5. 🔓 Open (four, and one has a deadline)
+
+| # | Question | Note |
+|---|---|---|
+| 1 | 🔴 **CSIBEINGS LLC's fiscal status** | Was there a capital contribution? Was the 5472 filed? Deadline **15 April**. See `research/ORG-AND-NAME.md` §2.5 — **the missing ITIN is not a blocker** |
+| 2 | The public name of the trust service | Rúbrica / Aval / Sello / other. No hurry |
+| 3 | Does the trust service live in the US LLC or in a local entity? | Splitting them is the clean answer |
+| 4 | The name of the spec package | It lives in `spec/` inside the repo; a name of its own is optional |
+
+---
+
+## 6. What is still missing before the repo is pushed
+
+**Blocking:**
+
+- [ ] The `syn` CLI on this machine is **broken**: `syn whoami` fails with
+      *"Capability not granted: file_read(".synsema/syn.json")"*. The installed `syn.syn` is from
+      5-oct and lacks the `require file.read(".synsema/syn.json")`. **`syn update`** should fix it
+      (the CLI fetches itself from the site). Until then `syn deploy` will not work.
+- [ ] `syn setup` — sign in and pick the organisation. `~/.synsema/syn.json` exists (381 bytes,
+      26-sep), so the machine is signed in; the local CLI just cannot read it.
+- [ ] Create the repo `SYNSEMA/agent-payments` (public) and push. **The org `SYNSEMA` exists**
+      (created 23-jul-2026, 9 public repos). `github.com/synsema/agent-payments` is **404 → free**.
+- [ ] Add the recipe to the ecosystem's registry: `SYNSEMA/recipes` has a `catalog.toml` listing
+      `[[recipe]] path = "..."`, and each entry's `syn.toml` points at the code repo with
+      `[source] repo` + `ref` (a tag).
+- [ ] Tag `v0.1.0` — the recipe's `[source] ref` points at a tag, not a branch.
+
+**Not blocking, but before v0.2.0:**
+
+- [ ] Migrate the demo to the **flight** scenario (six constraints) — specified in
+      `research/THESIS.md` §3, not implemented. Requires regenerating the golden file with a real
+      WebAuthn ceremony and re-running the mutation audit.
+- [ ] The intent extractor (today it is a fixed intent per scenario).
+- [ ] Anti-replay: a timestamp or nonce compared against a validity window.
+
+---
+
+## 7. How to resume this with Hermes
+
+**Fastest:** open Hermes in this folder and say
+
+> `Leé ~/Desktop/intent-proof/INDEX.md y seguí con el próximo paso pendiente.`
+
+**With the original conversation:** the history is preserved and searchable —
+
+> `Buscá en mis conversaciones anteriores "agent-payments" y retomá desde el último estado.`
+
+**From scratch:** say
+
+> `Trabajamos en ~/Desktop/intent-proof, que se publica como github.com/SYNSEMA/agent-payments.
+> Leé INDEX.md, spec/SPEC.md y research/ORG-AND-NAME.md antes de proponerme nada. La empresa es
+> CSIBEINGS LLC, el lenguaje SYNSEMA, la receta agent-payments.`
+
+### What survives a close
+
+| | |
+|---|---|
+| ✅ | Every file in `~/Desktop/intent-proof/` · Hermes's **memory** (profile `default`) · the **skills** (`open-source-standard-strategy` with its worked example, `startup-gtm-validation`, `synsema`) · the **session history** (searchable) |
+| ⚠️ | The local server (`synsema serve web.syn` → 8477) and the browser's virtual authenticator have to be started again |
+| ❌ | The *context* of the conversation — which is why everything decided is **written in files** |
+
+**The rule this project followed:** *if it is not in a file, it is not decided.*
+
+---
+
+## 8. Things that are true and must not be repeated wrong
+
+- AP2 v0.2 does **not** keep the "Intent Mandate" in natural language — that was v0.1.
+- The **23,1%** is a **derived** number (42,8% × 54%), not a published Visa metric, and the
+  benchmark covers only TVs, laptops and appliances.
+- Visa Compelling Evidence 3.0 is **optional** and covers only **10.4**. **13.3** does not qualify.
+- The bundle is **AEP-shaped, not AEP-complete**, and it is **not Verifiable Intent compatible**.
+  The honest table is in `README.md` and `CHANGELOG.md`.
+- The signed message is `SHA-256(JCS(proofConfig)) ‖ SHA-256(JCS(doc without proof))` — **not** the
+  document. See `spec/SPEC.md` §6.3.
+
+---
+
+## 9. Commands
+
+```bash
+cd ~/Desktop/intent-proof
+
+synsema test src/proof.test.syn                                  # 31 tests
+synsema run --cap-set "stdout,file.read" src/verify.syn -- proof-bundle.json   # VERIFIED
+synsema run --cap-set "stdout,file.read" src/verify.syn -- tampered.json       # REJECTED (exit 1)
+./demo.cmd                                                       # the three above, exit 0
+
+node reference/ts/verify.mjs testvectors/valid                   # 1/1 verified
+node reference/ts/verify.mjs testvectors/invalid                 # 13/13 rejected
+cargo test --manifest-path reference/rust/Cargo.toml             # 4/4
+sh scripts/verify-vectors.sh                                     # the Synsema verifier, 14/14
+node scripts/make-vectors.mjs                                    # regenerate the vectors
+
+synsema serve web.syn                                            # the console, 8477
+```

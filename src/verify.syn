@@ -1,0 +1,52 @@
+-- intent-proof · src/verify.syn
+-- The OFFLINE verifier.
+--
+-- This is the tool a third party runs. It has:
+--   · no network capability
+--   · no signing capability  (it physically cannot sign anything)
+--   · no access to the issuer's private key (only the public did:key)
+--
+-- It reads a proof bundle from disk and answers one question:
+--   was this purchase authorized, and does the evidence still hold?
+--
+-- Usage:
+--   synsema run src/verify.syn -- <bundle.json> [issuer-did]
+--
+-- Exit code 0 = VERIFIED, 1 = REJECTED.
+
+use "./intent.syn" as intents
+use "./conformance.syn" as conf
+use "./proof.syn" as proof
+
+-- The public identity of the platform that issued the statement. Published,
+-- never private.
+let DEFAULT_ISSUER be "did:key:z6MkvRXNYcE7MMduynWTgeKbDaT1iijDSC8pZqXZc8rHPrf2"
+
+let argv be args()
+let PATH_ARG be when length(argv) > 0 then argv[0] otherwise "./proof-bundle.json"
+let ISSUER_ARG be when length(argv) > 1 then argv[1] otherwise DEFAULT_ISSUER
+
+require file.read(PATH_ARG)
+
+let raw be read_file(PATH_ARG)
+let BUNDLE be json_decode(raw, nothing)
+when BUNDLE == nothing
+    print("intent-proof · the file is not valid JSON: " + PATH_ARG)
+    exit(2)
+
+let V be proof.verify_bundle(BUNDLE, ISSUER_ARG)
+
+print("intent-proof · offline verification")
+print("bundle   → " + PATH_ARG)
+print("issuer   → " + ISSUER_ARG)
+print("")
+each c in V.checks
+    print((when c.ok then "  [ok] " otherwise "  [XX] ") + c.name)
+    print("        " + c.detail)
+print("")
+print("─── " + V.summary + " ───")
+when not V.ok
+    each f in V.failures
+        print("  " + f.name + ": " + f.detail)
+    exit(1)
+exit(0)

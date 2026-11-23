@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/SYNSEMA/agent-payments/blob/main/spec/bundle.schema.json",
+  "title": "agent-payments proof bundle",
+  "description": "A signed, self-contained proof that a purchase made by an AI agent was requested and approved by a human, and that the purchase meets the request. See SPEC.md.",
+  "type": "object",
+  "required": ["intent", "proposal", "signed_statement", "human_assertion"],
+  "additionalProperties": false,
+  "properties": {
+    "intent": {
+      "type": "object",
+      "required": ["version", "raw", "constraints"],
+      "properties": {
+        "version": { "const": "intent-proof/intent/1" },
+        "raw": { "type": "string", "description": "The user's literal words. Never interpreted by the verifier." },
+        "constraints": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/constraint" }
+        }
+      }
+    },
+    "proposal": {
+      "type": "object",
+      "required": ["summary", "amount"],
+      "properties": {
+        "merchant": { "type": "string" },
+        "merchant_id": { "type": "string" },
+        "summary": { "type": "string" },
+        "category": { "type": "string" },
+        "amount": { "type": "number" },
+        "currency": { "type": "string" }
+      },
+      "additionalProperties": true,
+      "description": "Free-form by design: the format does not constrain what a purchase looks like. The fields a constraint refers to must be present, or the constraint fails."
+    },
+    "signed_statement": {
+      "type": "object",
+      "required": ["@context", "type", "issuer", "credentialSubject", "proof"],
+      "properties": {
+        "@context": { "type": "array", "items": { "type": "string" } },
+        "type": { "type": "array", "items": { "type": "string" } },
+        "issuer": { "type": "string", "pattern": "^did:key:z[1-9A-HJ-NP-Za-km-z]+$" },
+        "credentialSubject": {
+          "type": "object",
+          "required": ["version", "intent_fingerprint", "proposal_fingerprint", "verdict", "approval", "conformance"],
+          "properties": {
+            "version": { "const": "intent-proof/proof/1" },
+            "intent_fingerprint": { "$ref": "#/$defs/fingerprint" },
+            "proposal_fingerprint": { "$ref": "#/$defs/fingerprint" },
+            "verdict": { "enum": ["conformant", "non_conformant"] },
+            "approval": { "$ref": "#/$defs/approval" },
+            "conformance": { "$ref": "#/$defs/conformance" }
+          }
+        },
+        "proof": { "$ref": "#/$defs/proof" }
+      }
+    },
+    "human_assertion": { "$ref": "#/$defs/assertion" }
+  },
+  "$defs": {
+    "fingerprint": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "constraint": {
+      "type": "object",
+      "required": ["kind", "field", "op", "value", "label"],
+      "properties": {
+        "kind": { "enum": ["budget", "category", "attribute", "quantity"] },
+        "field": { "type": "string", "minLength": 1 },
+        "op": { "enum": ["<=", "==", ">=", "contains", "in"] },
+        "value": {},
+        "currency": { "type": "string" },
+        "label": { "type": "string" }
+      },
+      "description": "kind is informational: the verifier evaluates field, op and value."
+    },
+    "approval": {
+      "type": "object",
+      "required": ["approved_at", "approved_by", "credential_id", "issuer", "rp_id", "origin", "challenge", "credential_public_key", "sign_count", "user_handle"],
+      "properties": {
+        "approved_at": { "type": "number" },
+        "approved_by": { "type": "string" },
+        "credential_id": { "type": "string" },
+        "issuer": { "type": "string" },
+        "rp_id": { "type": "string" },
+        "origin": { "type": "string" },
+        "challenge": { "type": "string" },
+        "credential_public_key": {
+          "type": "object",
+          "required": ["kty", "crv", "alg", "x", "y"],
+          "properties": {
+            "kty": { "const": "EC" },
+            "crv": { "const": "P-256" },
+            "alg": { "const": "ES256" },
+            "x": { "type": "string" },
+            "y": { "type": "string" }
+          }
+        },
+        "sign_count": { "type": "integer", "minimum": 0 },
+        "user_handle": { "type": "string" }
+      }
+    },
+    "conformance": {
+      "type": "object",
+      "required": ["verdict", "checks"],
+      "properties": {
+        "verdict": { "enum": ["conformant", "non_conformant"] },
+        "passed": { "type": "integer", "minimum": 0 },
+        "total": { "type": "integer", "minimum": 0 },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["constraint", "ok", "detail"],
+            "properties": {
+              "constraint": { "$ref": "#/$defs/constraint" },
+              "ok": { "type": "boolean" },
+              "observed": {},
+              "detail": { "type": "string" }
+            }
+          }
+        },
+        "violations": { "type": "array" }
+      }
+    },
+    "proof": {
+      "type": "object",
+      "required": ["type", "cryptosuite", "verificationMethod", "proofPurpose", "proofValue"],
+      "properties": {
+        "@context": { "type": "array", "items": { "type": "string" } },
+        "type": { "const": "DataIntegrityProof" },
+        "cryptosuite": { "const": "eddsa-jcs-2022" },
+        "verificationMethod": { "type": "string", "minLength": 1 },
+        "proofPurpose": { "type": "string" },
+        "created": { "type": "string" },
+        "challenge": { "type": "string" },
+        "domain": { "type": "string" },
+        "proofValue": { "type": "string", "pattern": "^z[1-9A-HJ-NP-Za-km-z]+$" }
+      },
+      "description": "The signed message is SHA-256(JCS(proofConfig)) || SHA-256(JCS(document without proof)). See SPEC.md section 6.3."
+    },
+    "assertion": {
+      "type": "object",
+      "required": ["id", "rawId", "type", "response"],
+      "properties": {
+        "id": { "type": "string" },
+        "rawId": { "type": "string", "description": "Must equal id." },
+        "type": { "const": "public-key" },
+        "response": {
+          "type": "object",
+          "required": ["clientDataJSON", "authenticatorData", "signature"],
+          "properties": {
+            "clientDataJSON": { "type": "string" },
+            "authenticatorData": { "type": "string" },
+            "signature": { "type": "string" },
+            "userHandle": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

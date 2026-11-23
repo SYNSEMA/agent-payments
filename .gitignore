@@ -1,0 +1,41 @@
+# ── Synsema ─────────────────────────────────────────────────────────────────
+# the engine's own clone and build directories
+.synsema/
+build/
+dist/
+*.exe
+*.exe.old
+*.new
+
+# ── Secrets: a real .env is NEVER committed ─────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Node (the TypeScript reference verifier) ───────────────────────────────
+node_modules/
+reference/ts/node_modules/
+
+# ── Rust (the Rust reference verifier) ─────────────────────────────────────
+reference/rust/target/
+
+# ── Runtime state (the console's volume) ───────────────────────────────────
+/data/
+*.db
+*.sqlite
+*.sqlite3
+
+# ── Local scratch and logs ──────────────────────────────────────────────────
+/tmp/
+*.tmp
+*.log
+*.pid
+
+# ── Editors and operating systems ──────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*~

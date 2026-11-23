@@ -1,0 +1,152 @@
+{
+  "intent": {
+    "version": "intent-proof/intent/1",
+    "raw": "book a hotel in NYC for 2 nights under $600 total, free cancellation until the day before arrival",
+    "constraints": [
+      {
+        "kind": "budget",
+        "field": "amount",
+        "op": "<=",
+        "value": 600,
+        "currency": "USD",
+        "label": "no more than 600 USD"
+      },
+      {
+        "kind": "category",
+        "field": "category",
+        "op": "==",
+        "value": "hotel",
+        "label": "a hotel"
+      },
+      {
+        "kind": "attribute",
+        "field": "nights",
+        "op": "==",
+        "value": 2,
+        "label": "exactly 2 nights"
+      }
+    ]
+  },
+  "proposal": {
+    "merchant": "The Standard, NYC",
+    "merchant_id": "standard-nyc",
+    "summary": "The Standard NYC — 2 nights, $540, free cancellation until 24h before arrival",
+    "category": "hotel",
+    "amount": 540,
+    "currency": "USD",
+    "nights": 2,
+    "refundable_days": 1
+  },
+  "signed_statement": {
+    "@context": [
+      "https://www.w3.org/2018/credentials/v1"
+    ],
+    "type": [
+      "VerifiableCredential",
+      "IntentProof"
+    ],
+    "issuer": "did:key:z6MkvRXNYcE7MMduynWTgeKbDaT1iijDSC8pZqXZc8rHPrf2",
+    "credentialSubject": {
+      "version": "intent-proof/proof/1",
+      "intent_fingerprint": "sha256:5e0dce505de3c7852ec7bbf5e3ca8c1fb7ed318c6f2195c463a01df20ad0bd4d",
+      "proposal_fingerprint": "sha256:eac67fb0b22219e4aeba01957716952079d0a0fe234a631936cdc5af10155b2f",
+      "verdict": "conformant",
+      "approval": {
+        "approved_at": 1795238561.972181,
+        "approved_by": "user-1",
+        "credential_id": "MUizD-urt3vTvNGJqFW6-1XSIdZhEAYmiXJWUyuY_Sk",
+        "issuer": "did:key:z6MkvRXNYcE7MMduynWTgeKbDaT1iijDSC8pZqXZc8rHPrf2",
+        "rp_id": "localhost",
+        "origin": "http://localhost:8477",
+        "challenge": "ZlYZIptJGPlCkiByVoMBS_0FWxyz0iXd5BlxpqNL6nk",
+        "credential_public_key": {
+          "kty": "EC",
+          "crv": "P-256",
+          "alg": "ES256",
+          "x": "NQhFNsaivcl_7bzgnNPIFGfzVTzsCuWlxukGBkVVh_c",
+          "y": "NPo3tjz0l593Wthe5RE6pXFc2wb_r3IiG-Hdyb62PJE"
+        },
+        "sign_count": 1,
+        "user_handle": "dXNlci0x"
+      },
+      "conformance": {
+        "verdict": "conformant",
+        "checks": [
+          {
+            "constraint": {
+              "kind": "budget",
+              "field": "amount",
+              "op": "<=",
+              "value": 600,
+              "currency": "USD",
+              "label": "no more than 600 USD"
+            },
+            "ok": true,
+            "observed": 540,
+            "detail": "within the limit (540 <= 600)"
+          },
+          {
+            "constraint": {
+              "kind": "category",
+              "field": "category",
+              "op": "==",
+              "value": "hotel",
+              "label": "a hotel"
+            },
+            "ok": true,
+            "observed": "hotel",
+            "detail": "matches (hotel)"
+          },
+          {
+            "constraint": {
+              "kind": "attribute",
+              "field": "nights",
+              "op": "==",
+              "value": 2,
+              "label": "exactly 2 nights"
+            },
+            "ok": true,
+            "observed": 2,
+            "detail": "matches (2)"
+          },
+          {
+            "constraint": {
+              "kind": "attribute",
+              "field": "refundable_days",
+              "op": ">=",
+              "value": 1,
+              "label": "free cancellation until at least 1 day(s) before"
+            },
+            "ok": true,
+            "observed": 1,
+            "detail": "meets the minimum (1 >= 1)"
+          }
+        ],
+        "passed": 4,
+        "total": 4,
+        "violations": []
+      }
+    },
+    "proof": {
+      "@context": [
+        "https://www.w3.org/2018/credentials/v1"
+      ],
+      "type": "DataIntegrityProof",
+      "cryptosuite": "eddsa-jcs-2022",
+      "verificationMethod": "did:key:z6MkvRXNYcE7MMduynWTgeKbDaT1iijDSC8pZqXZc8rHPrf2#z6MkvRXNYcE7MMduynWTgeKbDaT1iijDSC8pZqXZc8rHPrf2",
+      "proofPurpose": "assertionMethod",
+      "proofValue": "z2L3iWjWbfPHcDgqezEyctkq1sZGLGYkMkzPq9d29mYSZvmKPFyfyb1LaBHTE39xYNCxbcN6jmBDtNMG7w1Pc1TR3"
+    }
+  },
+  "human_assertion": {
+    "id": "MUizD-urt3vTvNGJqFW6-1XSIdZhEAYmiXJWUyuY_Sk",
+    "rawId": "MUizD-urt3vTvNGJqFW6-1XSIdZhEAYmiXJWUyuY_Sk",
+    "response": {
+      "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiWmxZWklwdEpHUGxDa2lCeVZvTUJTXzBGV3h5ejBpWGQ1Qmx4cHFOTDZuayIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6ODQ3NyIsImNyb3NzT3JpZ2luIjpmYWxzZX0",
+      "authenticatorData": "SZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2MFAAAAAg",
+      "signature": "MEYCIQCCfJhBrLkWhUvRh8_N8OkAMkT3yyVsFtKryJF_5SopwAIhAKv8G9Dm0IZGOVCBJl6QREl8-VN4j4dv7HceMr0pAKfM",
+      "userHandle": "dXNlci0x"
+    },
+    "type": "public-key"
+  }
+}

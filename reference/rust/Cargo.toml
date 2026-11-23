@@ -1,0 +1,27 @@
+[package]
+name = "agent-payments-verifier"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+license = "Apache-2.0"
+description = "Reference verifier for the agent-payments proof bundle: offline, no network, no account."
+repository = "https://github.com/SYNSEMA/agent-payments"
+readme = "README.md"
+
+[lib]
+name = "agent_payments_verifier"
+path = "src/lib.rs"
+
+[[bin]]
+name = "apv"
+path = "src/main.rs"
+
+[dependencies]
+serde_json = "1"
+sha2 = "0.10"
+ed25519-dalek = "2"
+p256 = { version = "0.13", features = ["ecdsa"] }
+ecdsa = { version = "0.16", features = ["der"] }
+base64 = "0.22"
+
+[dev-dependencies]

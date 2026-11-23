@@ -1,0 +1,15 @@
+* text=auto eol=lf
+
+# a Windows batch file needs CRLF to run
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
+*.exe binary
+*.zip binary
