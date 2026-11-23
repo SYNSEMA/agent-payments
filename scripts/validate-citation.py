@@ -22,6 +22,7 @@ import sys
 import urllib.request
 
 import jsonschema
+import jsonschema.validators
 import yaml
 
 SCHEMA_URL = (
