@@ -2,10 +2,12 @@ cff-version: 1.2.0
 title: "agent-payments: the proof bundle format"
 message: >-
   If you use the agent-payments proof bundle format, please cite it using the
-  metadata from this file. This is a specification: the reference
-  implementations in this repository (Synsema, TypeScript and Rust) are
-  distributed under the same terms and are not separately required.
-type: standard
+  metadata from this file. This repository holds the normative specification
+  (spec/SPEC.md) together with three independent reference implementations
+  (Synsema, TypeScript and Rust) and the conformance vectors. The format and
+  the implementations are distributed under the same terms and do not need to be
+  cited separately.
+type: software
 authors:
   - given-names: Joel
     family-names: Lucena
@@ -13,8 +15,6 @@ authors:
     affiliation: Csibeings LLC
 version: 0.1.0
 date-released: '2026-11-23'
-publisher:
-  name: Csibeings LLC
 repository-code: 'https://github.com/SYNSEMA/agent-payments'
 url: 'https://github.com/SYNSEMA/agent-payments'
 abstract: >-
