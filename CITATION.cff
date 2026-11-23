@@ -1,19 +1,26 @@
 cff-version: 1.2.0
-title: agent-payments
+title: "agent-payments: the proof bundle format"
 message: >-
-  If you use this software, please cite it using the metadata from this file.
-type: software
+  If you use the agent-payments proof bundle format, please cite it using the
+  metadata from this file. This is a specification: the reference
+  implementations in this repository (Synsema, TypeScript and Rust) are
+  distributed under the same terms and are not separately required.
+type: standard
 authors:
   - given-names: Joel
     family-names: Lucena
     alias: kitecosmic
     affiliation: Csibeings LLC
+version: 0.1.0
+date-released: '2026-11-23'
+publisher:
+  name: Csibeings LLC
 repository-code: 'https://github.com/SYNSEMA/agent-payments'
 url: 'https://github.com/SYNSEMA/agent-payments'
 abstract: >-
   A portable, offline-verifiable evidence format for purchases made by AI
-  agents. It binds what a user requested, what the agent proposed, and what a
-  human approved, into a signed bundle that any third party can verify with
+  agents. It binds what a user requested, what the agent proposed and what a
+  human approved into a signed bundle that any third party can verify with
   public keys only - no network, no account, and no trust in the issuer. The
   reference implementation is written in Synsema; the reference verifiers are
   written in TypeScript and Rust and depend on nothing but their standard
@@ -27,6 +34,5 @@ keywords:
   - aep
   - conformance
   - webauthn
+  - specification
 license: Apache-2.0
-version: 0.1.0
-date-released: '2026-11-22'
