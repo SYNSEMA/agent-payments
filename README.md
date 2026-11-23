@@ -1,5 +1,7 @@
 # agent-payments
 
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/SYNSEMA/agent-payments/badge)](https://api.securityscorecards.dev/projects/github.com/SYNSEMA/agent-payments)
+
 **Verifiable evidence that an AI agent's purchase was requested and approved by a human — and that
 the purchase actually met the request.**
 
@@ -27,12 +29,24 @@ This is a **format**, not a service. The recipe is one convenient way in; it is 
 
 | | How | What you need |
 |---|---|---|
-| **Deploy it** | `syn deploy` from this folder — the [Synsema platform](https://synsema.com) CLI, Vercel-style | A platform account |
+| **Deploy it** | `syn deploy --kind web` from this folder — the [Synsema platform](https://synsema.com) CLI, Vercel-style | A platform account |
 | **Run it anywhere** | `synsema serve web.syn` | The Synsema engine. No account, no network, no platform |
 | **Just verify bundles** | `node reference/ts/verify.mjs bundle.json` | Node 20+. **Nothing else** |
 
 **The verifier never needs this project, this platform, or an account.** It takes one file and the
 issuer's public key. That is the point: the evidence has to survive the thing that produced it.
+
+### Where each layer runs
+
+| Layer | Where | Why |
+|---|---|---|
+| **The format** — spec, verifiers, vectors | **Nowhere.** Downloaded and run. | A third party must be able to verify without our server, our account or our permission |
+| **The recipe** — the console | The platform, `kind = "web"` | It has ingress: a browser drives it. Low traffic, one-click, sealed secrets and an audit log |
+| **Background work** — re-verifying old bundles, rotating keys, batch exports | The platform, `kind = "worker"` | A worker has **no URL** and is always on: feeds, queues, inboxes. A different shape for work with no ingress |
+| **The trust service** — the commercial layer | **A dedicated runner in our own cloud** (or a plain VPS) | Key custody in an HSM, a durable evidence vault, attestation, compliance exports, an SLA, real traffic. A worker is ephemeral and has no stable identity: the wrong shape for money and for a regulator |
+
+The rule: **the platform is the distribution and demonstration channel, not the place where the
+money or the keys live.** See [`GOVERNANCE.md`](GOVERNANCE.md) §11.
 
 ---
 
@@ -211,9 +225,16 @@ and the conformance report), and the WebAuthn signature binds the assertion.
 | Ed25519 / `did:key`, offline verification | ✅ yes |
 | W3C VC-shaped credential | ✅ yes |
 | WebAuthn / ES256 passkey approval | ✅ yes |
-| **AEP complete** (8-layer chain, `previous_hash`, seal at `authorization`, `DisputeBundle`) | ❌ **no** — AEP-shaped, not AEP-complete |
+| **AEP complete** (8-layer chain, `previous_hash`, seal at `authorization`, `DisputeBundle`) | ❌ **no** — AEP-shaped, not AEP-complete. And it could not be: AEP publishes conformance vectors (a), (b) and (h) only; vectors (c)–(m), including the signed dispute bundle, are not published, so **no implementation can claim full AEP conformance against published vectors today** |
 | **Verifiable Intent** (SD-JWT, `cnf`, `sd_hash`) | ❌ **no** |
 | AP2 mandate / Verifiable Intent interop | ❌ **no** — this is a different layer |
+
+**This is not a competing standard.** There is a live specification in this space —
+[A-Comm Evidence Protocol](https://github.com/A-Comm-Tech/a-comm-evidence-protocol) — and this
+repository does not replace it. AEP is the evidence *chain*; this is the layer AEP does not have:
+**whether the purchase met the request**. They compose. See
+[`spec/SPEC.md`](spec/SPEC.md) §1.2, and the prior-art table in
+[`reference/implementations.md`](reference/implementations.md).
 
 This table is the honest one. A compatibility claim is a claim about your code, so
 [`CHANGELOG.md`](CHANGELOG.md) keeps it, and so does this file.

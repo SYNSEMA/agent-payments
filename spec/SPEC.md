@@ -27,7 +27,43 @@ that recomputes the verdict, and the nine checks a verifier performs.
 filed; what a merchant does with the bundle. This specification says nothing about whether a
 purchase is a good idea, and nothing about who is liable if it is not.
 
-### 1.1 The threat model, in one paragraph
+### 1.2 This is not a competing standard
+
+**Read this before you publish anything under this name.**
+
+There is a live, Apache-2.0, DCO-governed specification in this space:
+**[A-Comm Evidence Protocol](https://github.com/A-Comm-Tech/a-comm-evidence-protocol)** (AEP),
+published by A-Comm Technologies. Its repository is `spec/`, `vectors/`, `GOVERNANCE.md`,
+`SECURITY.md`, `NOTICE` (with its own "Necessary Claims" patent grant), `COMMENT-ROUND.md` and
+`working-groups/` — structurally the same shape as this repository.
+
+**This specification does not compete with it, and does not replace it.** AEP is the *evidence
+chain*: how a sequence of artefacts is sealed, hashed and chained so that a dispute can be
+reconstructed. This specification is the layer AEP does not have: **whether the purchase met the
+request**.
+
+They compose. A bundle produced here can be the content that an AEP chain seals.
+
+| Specification | What it does | What this adds |
+|---|---|---|
+| **AEP** (A-Comm Technologies) | The evidence chain: sealed artefacts, `previous_hash`, the chain and the dispute bundle | This bundle is **AEP-shaped**: RFC 8785 canonicalisation, SHA-256, Ed25519, offline verification. It is **not AEP-complete** — no eight-layer chain, no `previous_hash`, no seal at `authorization`, no `DisputeBundle` export |
+| **AP2** (Google) | Mandates and credentials for agent-initiated payment | AP2 constrains the *authorisation*. It does not record whether the purchase met the request |
+| **Verifiable Intent** (Mastercard + Google) | Proves the agent stayed inside its authority | A different layer: *was the agent authorised to do this at all*, not *is this the thing that was asked for* |
+| **W3C Verifiable Credentials** | The credential shape | The bundle uses a VC-shaped `signed_statement` |
+
+**A note on what "AEP-complete" would even mean today.** AEP publishes conformance vectors
+(a), (b) and (h) — genesis, the eight-artifact chain, and JCS canonicalisation — plus
+`keys.json`. Vectors (c) through (m), including the signed dispute bundle, **are not published**.
+No implementation can therefore claim full AEP conformance against published vectors today, and
+this specification does not claim it either. See [`../CHANGELOG.md`](../CHANGELOG.md) § Known
+limitations.
+
+**If you are implementing in this space:** implement AEP's chain if you need a dispute-grade
+evidence chain, implement Verifiable Intent if you need a mandate, and implement **this** if you
+need to know that the thing the agent bought is the thing the human asked for. The three compose;
+none of them subsumes another.
+
+### 1.3 The threat model, in one paragraph
 
 The issuer is **not trusted**. It may be compromised, malicious, or merely buggy, and it may sign
 anything. The verifier's job is to detect every forgery that a dishonest issuer could produce.
@@ -38,7 +74,7 @@ The attack this format exists to make **detectable** is the one where an agent b
 does not meet the request it was given — an attack that leaves no structural trace in the payment
 records, and that a signature alone does not catch ([arXiv:2609.11757](https://arxiv.org/abs/2609.11757)).
 
-### 1.2 Relationship to other specifications
+### 1.4 Relationship to other specifications
 
 This format is **not** a replacement for any of these, and does not claim compatibility with them:
 
@@ -189,6 +225,24 @@ The canonical form of a JSON value is:
 
 **A number that cannot be represented exactly** (an integer beyond 2^53) **must not** appear in a
 signed document: put it in the document as text. A canonical form that rounds is not canonical.
+
+**I-JSON restrictions (RFC 8785 §3.1).** The input to a canonicalisation **must** be I-JSON:
+
+- **No duplicate member names.** A JSON object with two `amount` members is not a valid input,
+  and a verifier **must reject** it rather than pick one. Two byte streams that verify as one
+  are the sharpest edge of any offline-verifiable hash chain, and duplicate names are the
+  cheapest way to get there.
+- **No integers outside the IEEE-754 double range**, and no values that would change type on
+  round-trip.
+- **Strings are Unicode scalars**; unpaired surrogates are not permitted.
+
+A verifier **must** enforce these before it hashes anything. `canonical_json` in the reference
+implementation refuses an integer beyond 2^53 rather than rounding it, and refuses bytes and
+secrets outright — a secret has no JSON form and must never be serialised.
+
+**Normative language.** The key words MUST, MUST NOT, SHOULD, SHOULD NOT and MAY in this
+document are to be interpreted as described in **BCP 14** (RFC 2119 and RFC 8174) when, and only
+when, they appear in all capitals.
 
 ### 6.3 The proof
 

@@ -106,8 +106,16 @@ research/                       the strategy, the thesis and the raw market rese
 6. **No access to anyone's conversations.** It is a library the agent's own runtime calls at the
    point of authorisation.
 7. **No money spent** until someone buys or commits to buy.
+8. **Where each layer runs** (`GOVERNANCE.md` §11): the **format is hosted nowhere** (it is
+   downloaded and it runs) · the **recipe** is a platform `kind = "web"` service · background work
+   with no ingress is a platform `kind = "worker"` · the **trust service** is a **dedicated runner
+   in our own cloud** (or a plain VPS). The platform is the distribution channel, not the place
+   where the money or the keys live.
+9. **This is not a competing standard.** AEP (A-Comm Technologies) is the evidence *chain*; this is
+   the intent-and-conformance layer. They compose. The repo says so in `spec/SPEC.md` §1.2, in the
+   README and in the prior-art table.
 
-## 5. 🔓 Open (four, and one has a deadline)
+## 5. 🔓 Open (five, and two have a deadline)
 
 | # | Question | Note |
 |---|---|---|
@@ -115,6 +123,7 @@ research/                       the strategy, the thesis and the raw market rese
 | 2 | The public name of the trust service | Rúbrica / Aval / Sello / other. No hurry |
 | 3 | Does the trust service live in the US LLC or in a local entity? | Splitting them is the clean answer |
 | 4 | The name of the spec package | It lives in `spec/` inside the repo; a name of its own is optional |
+| 5 | 🔴 **How to position against AEP** | AEP is a live Apache-2.0+DCO spec in the same space (`A-Comm-Tech/a-comm-evidence-protocol`). The repo already says "not a competing standard" and the two compose — but **the founder should confirm that framing before publishing**, because a second "agentic-commerce evidence standard" is the one thing that would make auditors and payments people see a duplicate |
 
 ---
 

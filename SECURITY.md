@@ -40,7 +40,25 @@ is going to be missed, you will be told before it passes, not after.
 - The **test vectors** and the CI.
 - The **recipe**: `web.syn` and the capability declarations it makes.
 
-## What is *not* a vulnerability
+### Specification-level vulnerabilities
+
+These are the classes that matter for a format whose security properties *are* the product. A
+report in any of them is a valid report.
+
+| Class | What it means here |
+|---|---|
+| **Evidence forgery** | A bundle that verifies as something it is not |
+| **Backdating** | A bundle that claims an approval, a challenge or a timestamp that is not the one that happened |
+| **Canonicalisation ambiguity** | Two byte streams that verify as one — duplicate member names, a number that rounds, a Unicode form that is not normalised |
+| **Cross-transaction splicing** | A field of one bundle reused in another: an approval from one purchase bound to the proposal of another |
+| **Replay** | An old bundle re-presented as current |
+| **Secret leakage** | A key, a credential or a private value appearing in a bundle, in a log, or in an error message |
+
+Note that the canonicalisation row is not hypothetical: it is why §6.2 of the specification names
+the I-JSON restrictions of RFC 8785 §3.1 explicitly, and why `canonical_json` refuses an
+out-of-range integer rather than rounding it.
+
+### What is *not* a vulnerability
 
 These are properties of the design, not bugs. Reporting them is a waste of the maintainer's time
 and of the reporter's:

@@ -97,11 +97,21 @@ Rules:
 
 Today the `synsema` organisation is the steward. That is correct while there is one implementer.
 
-> **Trigger.** When **three independent implementers** — people or organisations with no
-> employment, funding or contractual relationship with the Maintainer — ship interoperable
-> implementations that pass the shared conformance vectors, the Maintainer **proposes the donation**
-> of `spec/` and `reference/` to a neutral steward: a foundation, a consortium, or a
-> community-elected steward.
+> **Trigger.** When **three independent implementers from at least two organisations** — people
+> or organisations with no employment, funding or contractual relationship with the Maintainer —
+> ship interoperable implementations that pass the shared conformance vectors, the Maintainer
+> **proposes the donation** of `spec/` and `reference/` to a neutral steward.
+>
+> **The first candidate is FINOS** (the Financial Technology Foundation under the Linux
+> Foundation), because it is the foundation whose membership is the audience this specification
+> is for. The alternative is a consortium or a community-elected steward. **The Open Source
+> Security Foundation** is the other serious candidate, given that the security properties here
+> *are* the product.
+
+"Three independent implementers" is a countable trigger, not a feeling. It means three entries in
+[`reference/implementations.md`](../reference/implementations.md), **from at least two distinct
+organisations**, each with a passing conformance run, each verifiably independent of the
+Maintainer.
 
 The recipe and the language stay in `synsema`. **The specification goes neutral.** The split is
 deliberate: a foundation holds a standard, not a product line.
@@ -147,5 +157,52 @@ The Maintainer may sell trust services built **on** this format. The Maintainer 
 - make the conformance vectors inaccessible;
 - add a clause to the licence that restricts commercial use.
 
-The first three would make the format a business for the few. The fourth would make it a
-licence, not a standard.
+- The first three would make the format a business for the few. The fourth would make it a
+  licence, not a standard.
+
+---
+
+## 11. Where each layer runs
+
+The format, the recipe and the commercial service are three different things and they do not
+belong in the same place. This is a decision, not a preference.
+
+| Layer | Where it runs | Why |
+|---|---|---|
+| **The format** — the spec, the verifiers, the vectors | **Nowhere.** It is downloaded and it runs. | The whole point is that a third party can verify a bundle without our server, our account or our permission. If the format needed hosting, it would be a service, and a service can be switched off |
+| **The recipe** — the console | **The platform, as `kind = "web"`** | It has ingress: a browser drives it. Low traffic, one-click, and the platform's sealed secrets and audit log are exactly the right shape for a demo that signs things |
+| **The console's background work** — re-verifying old bundles, rotating keys, batch exports | **The platform, as `kind = "worker"`** | A worker has **no URL** and is always on: it watches feeds, queues and inboxes. That is the right shape for work with no ingress, and it is a different shape from the console |
+| **The trust service** — the commercial layer | **A dedicated runner in our own cloud** (the platform's Enterprise shape), or a plain VPS | Custody of keys in an HSM, a durable evidence vault, attestation, compliance exports, an SLA and real traffic. A worker is ephemeral, has no stable identity and no durable filesystem: it is the wrong shape for money and the wrong shape for a regulator |
+
+**The rule that decides every future hosting argument:**
+
+> **The platform is the distribution and demonstration channel. It is not the place where the money
+> or the keys live.**
+
+And the corollary that matters more:
+
+> **The more a component needs the open format to be *the* product, the more it must not depend on
+> us running it.** The trust service is worth money precisely because it is the thing somebody else
+> could do without us — and that only holds if the format stays verifiable with nothing of ours.
+
+**The recipe is already worker-shaped.** The console keeps its session in the host's durable store
+(`state_*`), not in a process global, so it survives a cold start and more than one instance. That
+is why moving it from `web` to `worker` is a manifest change, not a rewrite.
+
+---
+
+## 12. Neutrality, restated as a constraint on ourselves
+
+The neutrality rules bind **the editors**, not only the participants. While this organisation
+stewards the specification:
+
+- **No vendor endorsement.** No "endorsed by", no partnership announcement, no competitive ranking.
+- **No liability assertion.** Nothing here says a conformant implementation is safe, correct or
+  approved by anybody. It says it matches this specification, which is a narrower and checkable
+  claim.
+- **No commercial tie-in.** The trust service may exist, may be sold, and may not appear in a
+  position of authority over the specification. A reader must be able to implement the format
+  without ever hearing of it.
+- **The specification is not forked by groups.** Any working group feeds one normative document.
+- **The licence and the patent grant are what make a transfer possible.** A future steward should
+  be able to take `spec/` without renegotiating with anyone.

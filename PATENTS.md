@@ -11,6 +11,19 @@ This grant applies to every path in this repository that carries the Apache-2.0 
 specification (`spec/`), the reference implementations (`reference/`), the test vectors
 (`testvectors/`) and the recipe (`web.syn`, `src/`).
 
+## The narrowing, and where it lives
+
+Apache-2.0 §3 grants a patent licence only over claims "necessarily infringed by their
+Contribution(s)". For a **specification** that is a weak fit: a specification arguably
+contributes no infringing claims at all, because it is not an implementation.
+
+So the grant here is narrowed the way the A-Comm Evidence Protocol narrows it: **`NOTICE`**
+declares a licence over **Necessary Claims** — the claims necessarily infringed by an
+implementation of the format as specified in `spec/SPEC.md` — and this document carries the
+termination. **The normative text of the narrowing is in `NOTICE`, not here**, so that the
+`LICENSE` file stays byte-identical to the canonical Apache-2.0 text that OSI, SPDX and the
+OpenSSF checks look for.
+
 ## Termination
 
 If you or your agent or affiliate institute directly or indirectly, or take a direct financial

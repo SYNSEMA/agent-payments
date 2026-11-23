@@ -56,7 +56,7 @@ Esto es lo que separa "abrir un repo" de "construir un estándar donable":
 
 | Mecanismo | Qué implica | Veredicto |
 |---|---|---|
-| **CLA unidireccional** ("asigno mis copyrights a la org") | La empresa queda dueña del código. Los legal de las empresas grandes lo odian | ❌ Google lo intentó con Chromium y **lo abandonó** |
+| **CLA unidireccional** ("asigno mis copyrights a la org") | La empresa queda dueña del código. Los legal de las empresas grandes lo odian | ❌ El punto real es la fricción, no Chromium: FINOS (la fundación de pagos del LF) documenta que "CLAs require contributors to sign a legal agreement, which can be a barrier to entry" ([fuente](https://osr.finos.org/docs/bok/artifacts/clas-and-dcos)). Con DCO no hay que firmar ningún acuerdo, y una donación futura a una fundación es un trámite, no una negociación |
 | **Sin CLA** | Apache-2.0 pelado, máxima adopción | ❌ La donación futura a una fundación requiere el OK de cada contributor: pesadilla |
 | **DCO (sign-off)** | Un `git commit -s`. Cada contributor certifica que tiene derecho a donar | ✅ **Es lo que usan el kernel de Linux, Kubernetes, CNCF y OpenSSF.** Leve, y hace la donación futura trivial |
 | **CLA permisiva (inbound = outbound)** | Cada contributor conserva su copyright pero licencia al proyecto | ✅ También funciona |

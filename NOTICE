@@ -23,3 +23,11 @@ modify it; it is a peer project that happens to share a maintainer and an organi
 The specification under spec/ is a separate work of authorship from the reference code,
 but is distributed under the same licence and the same patent grant as everything else
 here. See PATENTS.md.
+
+Patent grant (Necessary Claims). Csibeings LLC grants implementers of this format a
+licence, under Apache License 2.0 Section 3, to any Necessary Claim — a patent claim
+that is necessarily infringed by an implementation of the format as specified in
+spec/SPEC.md, whether or not the claim reads on the specification's text. A
+specification contributes no infringing claims on its own, so the Section 3 grant
+alone would be a weak fit here; this narrowing is what actually covers an
+implementation of the format. See PATENTS.md for the termination.

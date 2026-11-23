@@ -68,13 +68,18 @@ The first release. Everything below is new; there is no previous behaviour to pr
 
 - The bundle is **AEP-shaped but not AEP-complete**: it has RFC 8785 canonicalisation, Ed25519
   signatures and offline verification, but not the eight-layer chain, `previous_hash` inside the
-  hash input, the seal at `authorization`, or the `DisputeBundle` export.
+  hash input, the seal at `authorization`, or the `DisputeBundle` export. **AEP-complete is not
+  even achievable today**: AEP publishes conformance vectors (a), (b) and (h) only; vectors
+  (c)–(m), including the signed dispute bundle, are not published, so no implementation can claim
+  full AEP conformance against published vectors.
 - It is **not Verifiable Intent compatible**: there is no SD-JWT, no `cnf`, no `sd_hash`, and the
   approval key is not ES256.
 - There is no checkout, no payment processor and no settlement. The proof is produced *before*
   settlement and is verified independently of it.
 - The demo scenario is a hotel booking. The travel scenario the thesis calls for (a flight, six
-  constraints) is specified in `THESIS.md` §3 and not yet implemented.
+  constraints) is specified in `research/THESIS.md` §3 and not yet implemented.
+- **This is not a competing standard.** AEP (A-Comm Technologies) is the evidence *chain*; this is
+  the intent-and-conformance layer. They compose. See `spec/SPEC.md` §1.2.
 
 [Unreleased]: https://github.com/SYNSEMA/agent-payments/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/SYNSEMA/agent-payments/releases/tag/v0.1.0

@@ -13,6 +13,13 @@
 name = "Agent payments"
 slug = "agent-payments"
 version = "0.1.0"
+# kind = "web": the console has ingress — a browser drives it. The background work
+# that has NO ingress (re-verifying old bundles, rotating keys, batch exports)
+# belongs in a separate `kind = "worker"` service: a worker has no URL and is
+# always on. The trust service — the commercial layer, with key custody, an
+# evidence vault and an SLA — belongs on a dedicated runner in our own cloud: a
+# worker is ephemeral and has no stable identity, which is the wrong shape for
+# money and for a regulator. See GOVERNANCE.md section 11.
 kind = "web"
 entry = "web.syn"
 engine = "0.6"

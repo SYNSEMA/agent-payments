@@ -54,14 +54,20 @@ jobs:
         run: sh scripts/verify-vectors.sh
 
   vectors:
-    name: reference verifier (TypeScript)
+    name: reference verifier (TypeScript, node ${{ matrix.node }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Node 24 "Krypton" is the floor (EOL 2028-04-30); Node 26 "Lithium" entered
+        # LTS on 2026-10-28. A verifier has to run on both.
+        node: [24, 26]
     steps:
       - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v7
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: ${{ matrix.node }}
 
       - name: Every valid vector verifies
         run: node reference/ts/verify.mjs testvectors/valid
@@ -78,7 +84,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: dtolnay/rust-toolchain@v1
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
         with:
           toolchain: stable
 

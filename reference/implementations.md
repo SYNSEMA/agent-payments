@@ -21,6 +21,23 @@ An implementation is listed when:
 The maintainers run the suite against your implementation before merging. "It works on my machine"
 is not a conformance result; the vectors are the test.
 
+**The neutrality trigger counts organisations, not people.** Three entries from the same company
+are one implementer. The trigger in [`../GOVERNANCE.md`](../GOVERNANCE.md) §6 needs **three
+implementers from at least two distinct organisations**.
+
+## Prior art worth knowing about
+
+Before implementing this, look at these. None of them does what this specification does, and
+knowing the adjacency is what keeps a new repository from looking like a duplicate:
+
+| Project | What it is |
+|---|---|
+| [A-Comm Evidence Protocol](https://github.com/A-Comm-Tech/a-comm-evidence-protocol) | The evidence **chain**: sealed artefacts, `previous_hash`, the dispute bundle. AEP-shaped, not AEP-complete — and the two compose |
+| [aep-verify](https://github.com/Dera219/aep-verify) | An independent AEP verifier (Python, MIT), written from the spec text and checked against AEP's published vectors. It does **not** verify protocol envelopes |
+| [Verifiable Intent](https://github.com/agent-intent/verifiable-intent) | Mastercard + Google: proves the agent stayed inside its authority |
+| [AP2](https://github.com/google-agentic-commerce/AP2) | Google: mandates and credentials for agent-initiated payment |
+| [ap2-rust](https://github.com/dattgoswami/ap2-rust) | A Rust AP2 implementation, byte-compatible with the Python reference fixtures. The Rust precedent |
+
 ## The implementations
 
 | Implementation | Language | Author | Conformance | Notes |
