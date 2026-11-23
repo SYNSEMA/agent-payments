@@ -9,7 +9,26 @@ updates:
     directory: /reference/rust
     schedule:
       interval: weekly
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 2
+    # In a 0.x crate the MINOR version is the breaking one: sha2 0.10 -> 0.11 changes
+    # the API. Dependabot would open those as routine bumps, which is noise on a
+    # repository with one maintainer. So: patches and majors are proposed, minors
+    # of a 0.x crate are not.
+    ignore:
+      - dependency-name: "sha2"
+        update-types: ["version-update:semver-minor"]
+      - dependency-name: "ecdsa"
+        update-types: ["version-update:semver-minor"]
+      - dependency-name: "base64"
+        update-types: ["version-update:semver-minor"]
+      - dependency-name: "p256"
+        update-types: ["version-update:semver-minor"]
+      - dependency-name: "ed25519-dalek"
+        update-types: ["version-update:semver-minor"]
+      - dependency-name: "serde_json"
+        update-types: ["version-update:semver-minor"]
+      - dependency-name: "serde"
+        update-types: ["version-update:semver-minor"]
 
   - package-ecosystem: github-actions
     directory: /
