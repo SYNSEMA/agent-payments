@@ -19,7 +19,7 @@ path = "src/main.rs"
 [dependencies]
 serde_json = "1"
 sha2 = "0.10"
-ed25519-dalek = "2"
+ed25519-dalek = "3"
 p256 = { version = "0.13", features = ["ecdsa"] }
 ecdsa = { version = "0.16", features = ["der"] }
 base64 = "0.22"
