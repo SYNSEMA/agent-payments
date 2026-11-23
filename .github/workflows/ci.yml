@@ -112,6 +112,21 @@ jobs:
         # signed_statement at all — so they are NOT validated against the schema.
         # Their job is to be rejected by the verifiers, not to be well-formed.
 
+  citation:
+    name: the citation metadata is valid
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Validate CITATION.cff against the official CFF 1.2.0 schema
+        run: |
+          pip install --quiet jsonschema pyyaml
+          python scripts/validate-citation.py
+
   dco:
     name: DCO sign-off
     runs-on: ubuntu-latest
