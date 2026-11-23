@@ -1,16 +1,12 @@
 version: 2
 
 # The reference verifiers deliberately have no third-party dependencies - that is the portability
-# proof. Dependabot is here for the day that changes, and for the Rust verifier's crates.
+# proof. Dependabot is here for the Rust verifier's crates, and for the GitHub Actions themselves.
+# There is deliberately NO npm ecosystem entry: reference/ts has zero dependencies, so there is
+# nothing to watch.
 updates:
   - package-ecosystem: cargo
     directory: /reference/rust
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 3
-
-  - package-ecosystem: npm
-    directory: /reference/ts
     schedule:
       interval: weekly
     open-pull-requests-limit: 3

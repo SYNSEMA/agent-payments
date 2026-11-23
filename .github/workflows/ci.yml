@@ -104,7 +104,10 @@ jobs:
       - name: Validate every valid vector against spec/bundle.schema.json
         run: |
           pip install --quiet check-jsonschema
-          check-jsonschema --schemafile spec/bundle.schema.json "testvectors/valid/*.json" "src/fixture-bundle.json" "proof-bundle.json"
+          # the globs are NOT quoted: the shell expands them into a file list.
+          # quoted, check-jsonschema receives the literal string and fails with
+          # FileNotFoundError.
+          check-jsonschema --schemafile spec/bundle.schema.json testvectors/valid/*.json src/fixture-bundle.json proof-bundle.json
         # NOTE: the invalid vectors are deliberately malformed — one of them has no
         # signed_statement at all — so they are NOT validated against the schema.
         # Their job is to be rejected by the verifiers, not to be well-formed.
@@ -121,22 +124,28 @@ jobs:
         run: |
           set -euo pipefail
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            base="${{ github.event.pull_request.base.sha }}"
+            range="${{ github.event.pull_request.base.sha }}..HEAD"
           else
-            base=""
+            before="${{ github.event.before }}"
+            if [ -z "$before" ] || [ "$before" = "0000000000000000000000000000000000000000" ]; then
+              # the first push to this branch: every commit has to be checked
+              range="HEAD"
+            else
+              range="$before..HEAD"
+            fi
           fi
-          if [ -z "$base" ]; then
-            base="$(git rev-list --max-parents=0 HEAD | tail -1)"
-            range="$base^..HEAD"
-          else
-            range="$base..HEAD"
+          shas="$(git rev-list "$range")"
+          if [ -z "$shas" ]; then
+            echo "::error::no commit to check (range: $range)"
+            exit 1
           fi
+          echo "checking $(echo "$shas" | wc -l) commit(s) in $range"
           bad=0
-          for sha in $(git rev-list "$range"); do
+          for sha in $shas; do
             if ! git show -s --format='%B' "$sha" | grep -qE '^Signed-off-by: .+ <[^<>]+@[^<>]+>$'; then
-            echo "::error::commit $sha has no DCO sign-off. Fix it with: git commit --amend -s --no-edit"
-            bad=1
-          fi
+              echo "::error::commit $sha has no DCO sign-off. Fix it with: git commit --amend -s --no-edit"
+              bad=1
+            fi
           done
           exit $bad
 
