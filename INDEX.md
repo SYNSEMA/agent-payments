@@ -116,6 +116,21 @@ research/                       the strategy, the thesis and the raw market rese
 9. **This is not a competing standard.** AEP (A-Comm Technologies) is the evidence *chain*; this is
    the intent-and-conformance layer. They compose. The repo says so in `spec/SPEC.md` §1.2, in the
    README and in the prior-art table.
+10. **The recipe is NOT an entry in `SYNSEMA/recipes`.** That catalogue was last pushed on
+    **6-oct-2026** and every entry in it is a `vela-*` recipe bound to Horizen's Vela (the devnet,
+    the `VELA_*` secrets, the enclave). It is a Vela-era artefact: it will either be rewritten
+   around Vela's retirement or go with it, and a portable, non-Vela recipe filed there would be
+   either lost in that refactor or would make the catalogue incoherent. **The recipe lives as its
+   own repository in the organisation** and is distributed as such.
+11. **The distribution does not depend on the platform catalogue.** Three channels, in order of how
+    portable they are:
+    - **The format** — `git clone`, or the package channel: a `synsema.json` index under a stable
+      URL so that anyone can write `use "agent-payments"` and run `synsema get`. **This is the
+      "usable from everywhere" path, and it touches nothing of the platform.**
+    - **The recipe** — `git clone` + `synsema serve web.syn`, or `syn deploy` for the one-click
+      path.
+    - The platform's recipe catalogue is a **discovery convenience**, not a dependency. Nothing in
+      this repository is published there on purpose.
 
 ## 5. 🔓 Open (five, and two have a deadline)
 
@@ -140,11 +155,17 @@ research/                       the strategy, the thesis and the raw market rese
 - [ ] `syn setup` — sign in and pick the organisation. `~/.synsema/syn.json` exists (381 bytes,
       26-sep), so the machine is signed in; the local CLI just cannot read it.
 - [ ] Create the repo `SYNSEMA/agent-payments` (public) and push. **The org `SYNSEMA` exists**
-      (created 23-jul-2026, 9 public repos). `github.com/synsema/agent-payments` is **404 → free**.
-- [ ] Add the recipe to the ecosystem's registry: `SYNSEMA/recipes` has a `catalog.toml` listing
-      `[[recipe]] path = "..."`, and each entry's `syn.toml` points at the code repo with
-      `[source] repo` + `ref` (a tag).
+      (created 23-jul-2026) and the path is **404 → free**. `kitecosmic` is **admin** of the org
+      and `members_can_create_repositories` is true, so `gh repo create` works.
 - [ ] Tag `v0.1.0` — the recipe's `[source] ref` points at a tag, not a branch.
+- [ ] **Publish the package index** so the format is consumable without the platform: a
+      `synsema.json` with `id`, `version`, `main` and `files[]` (sha256 each), served under a
+      stable URL (GitHub Pages of the organisation, not `raw.githubusercontent`, which can be
+      claimed by a fork). The generator is the `make_index.syn` pattern from the Synsema docs.
+      That is what makes `use "agent-payments"` work for anyone.
+- [ ] ~~Add the recipe to `SYNSEMA/recipes`~~ — **decided: no.** See §4.10.
+- [ ] Branch protection on `main`, private vulnerability reporting on, and the Scorecard badge
+      (already in the README) lights up.
 
 **Not blocking, but before v0.2.0:**
 

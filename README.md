@@ -36,6 +36,11 @@ This is a **format**, not a service. The recipe is one convenient way in; it is 
 **The verifier never needs this project, this platform, or an account.** It takes one file and the
 issuer's public key. That is the point: the evidence has to survive the thing that produced it.
 
+**This recipe is deliberately not filed in the platform's recipe catalogue.** That catalogue is
+Vela-era — every entry in it is bound to Horizen's enclave — and it will be rewritten or go with
+Vela. This repository is distributed as its own repository, and the format itself is downloaded and
+run, with nothing of the platform in the path.
+
 ### Where each layer runs
 
 | Layer | Where | Why |
