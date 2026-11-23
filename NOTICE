@@ -31,3 +31,7 @@ spec/SPEC.md, whether or not the claim reads on the specification's text. A
 specification contributes no infringing claims on its own, so the Section 3 grant
 alone would be a weak fit here; this narrowing is what actually covers an
 implementation of the format. See PATENTS.md for the termination.
+
+"agent-payments" is a generic identifier for this format and its conformant
+implementations, and is not trademarked by Csibeings LLC. "Csibeings", "Csibeings
+LLC", "Synsema" and the Synsema logo are trademarks of Csibeings LLC.

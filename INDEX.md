@@ -87,6 +87,8 @@ research/                       the strategy, the thesis and the raw market rese
 | The three implementations agree | ✅ on every vector |
 | `./demo.cmd` | exit **0** |
 | The console | serves on 8477, `/api/state` answers |
+| `reuse lint` (REUSE 3.3) | **86/86 archivos, exit 0** ✅ |
+| The Chromium CLA claim | **corregida** — era falsa. Chromium sigue exigiendo CLA |
 
 **Everything above was executed, not assumed.**
 
